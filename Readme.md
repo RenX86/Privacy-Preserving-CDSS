@@ -4,15 +4,6 @@
 
 ------------------------------------------------------------------------
 
-## Student Information
-
--   **Student Name:** \[Your Name\]\
--   **Supervisor:** \[Mentor Name\]\
--   **Degree:** M.Sc. Bioinformatics (Semester IV)\
--   **Institution:** \[University Name\]
-
-------------------------------------------------------------------------
-
 ## Abstract
 
 Clinical Decision Support Systems (CDSS) play a critical role in
@@ -63,13 +54,10 @@ fail to meet these requirements.
 
 Current cloud-based AI systems suffer from:
 
-1.  **Hallucinations:** Fabrication of unsupported medical facts.
-2.  **Privacy Risks:** Transmission of sensitive patient data to
-    third-party servers.
-3.  **Static Knowledge:** Limited awareness of updated clinical
-    guidelines.
-4.  **Lack of Explainability:** Inability to trace responses back to
-    source documents.
+1.**Hallucinations:** Fabrication of unsupported medical facts.
+2.**Privacy Risks:** Transmission of sensitive patient data tothird-party servers.
+3.**Static Knowledge:** Limited awareness of updated clinicalguidelines.
+4.**Lack of Explainability:** Inability to trace responses back tosource documents.
 
 These risks directly impact patient safety and regulatory compliance.
 
@@ -85,11 +73,11 @@ retrieved evidence.
 
 ## 2. Objectives
 
-1.  Design a privacy-preserving CDSS architecture using local inference.
-2.  Implement a Retrieval-Augmented Generation pipeline.
-3.  Store embeddings using PostgreSQL with pgvector.
-4.  Reduce hallucinations through evidence grounding.
-5.  Evaluate system performance using quantitative metrics.
+1.Design a privacy-preserving CDSS architecture using local inference.
+2.Implement a Retrieval-Augmented Generation pipeline.
+3.Store embeddings using PostgreSQL with pgvector.
+4.Reduce hallucinations through evidence grounding.
+5.Evaluate system performance using quantitative metrics.
 
 ------------------------------------------------------------------------
 
@@ -123,19 +111,17 @@ databases.
 
 ### 4.1 High-Level Components
 
-1.  **Local Language Model:** Offline inference on GPU.
-2.  **Vector Database:** PostgreSQL + pgvector running locally via
-    Docker.
-3.  **Workflow Orchestrator:** Self-hosted n8n.
-4.  **User Interface:** Streamlit frontend.
-5.  **Containerization:** Docker Compose.
+1.**Local Language Model:** Offline inference on GPU.
+2.**Vector Database:** PostgreSQL + pgvector running locally viaDocker.
+3.**Workflow Orchestrator:** Self-hosted n8n.
+4.**User Interface:** Streamlit frontend.
+5.**Containerization:** Docker Compose.
 
 ### 4.2 Deployment Strategy
 
--   Entire system runs locally using Docker.
--   Optional tunneling via ngrok or Cloudflare Tunnel for
-    demonstrations.
--   No cloud-based GPU or database services are used.
+- Entire system runs locally using Docker.
+- Optional tunneling via ngrok or Cloudflare Tunnel fordemonstrations.
+- No cloud-based GPU or database services are used.
 
 ------------------------------------------------------------------------
 
@@ -162,18 +148,18 @@ LLM deployed locally using Ollama with GPU acceleration.
 
 ### 6.2 Knowledge Base Construction
 
--   Document ingestion
--   Cleaning and normalization
--   Chunking (\~500 words)
--   Embedding generation
--   Storage in pgvector
+- Document ingestion
+- Cleaning and normalization
+- Chunking (\~500 words)
+- Embedding generation
+- Storage in pgvector
 
 ### 6.3 Retrieval-Augmented Generation
 
--   Query embedding
--   Top-k semantic retrieval
--   Context injection
--   Evidence-grounded generation
+- Query embedding
+- Top-k semantic retrieval
+- Context injection
+- Evidence-grounded generation
 
 ### 6.4 Workflow Automation
 
@@ -201,11 +187,11 @@ Streamlit provides clinician-facing interaction and source inspection.
 
 ### 8.1 Metrics
 
--   Precision@k
--   Hallucination Rate
--   Faithfulness
--   Latency
--   Privacy Compliance
+- Precision@k
+- Hallucination Rate
+- Faithfulness
+- Latency
+- Privacy Compliance
 
 ### 8.2 Golden Dataset
 
@@ -216,25 +202,25 @@ official guidelines will serve as ground truth.
 
 ## 9. Ethical and Privacy Considerations
 
--   No patient-identifiable data stored.
--   All computation remains local.
--   AI assists decision-making, not diagnosis.
+- No patient-identifiable data stored.
+- All computation remains local.
+- AI assists decision-making, not diagnosis.
 
 ------------------------------------------------------------------------
 
 ## 10. Limitations
 
--   Knowledge limited to ingested documents.
--   Local hardware constraints.
--   Not a replacement for clinicians.
+- Knowledge limited to ingested documents.
+- Local hardware constraints.
+- Not a replacement for clinicians.
 
 ------------------------------------------------------------------------
 
 ## 11. Future Work
 
--   EHR integration
--   Multimodal data
--   Federated learning
+- EHR integration
+- Multimodal data
+- Federated learning
 
 ------------------------------------------------------------------------
 
@@ -259,41 +245,41 @@ cdss-project/
 │       └── metadata.json
 │
 ├── src/                           # Source code
-│   ├── __init__.py
+│   ├── **init**.py
 │   │
 │   ├── config/                    # Configuration files
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   └── settings.py           # Centralized settings
 │   │
 │   ├── database/                  # Database operations
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── db_connection.py      # Database connection handler
 │   │   └── db_operations.py      # CRUD operations
 │   │
 │   ├── processing/                # Document processing
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── pdf_extractor.py      # Extract text from PDFs
 │   │   ├── text_cleaner.py       # Clean and normalize text
 │   │   └── chunker.py            # Split text into chunks
 │   │
 │   ├── embedding/                 # Embedding generation
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── embed_model.py        # Load embedding model
 │   │   └── generate_embeddings.py # Create embeddings
 │   │
 │   ├── rag/                       # RAG pipeline
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── retrieval.py          # Vector similarity search
 │   │   ├── generation.py         # LLM response generation
 │   │   └── pipeline.py           # Complete RAG workflow
 │   │
 │   ├── api/                       # API and LLM interactions
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── ollama_client.py      # Ollama API wrapper
 │   │   └── prompts.py            # Prompt templates
 │   │
 │   └── utils/                     # Utility functions
-│       ├── __init__.py
+│       ├── **init**.py
 │       ├── logger.py             # Logging configuration
 │       └── helpers.py            # Common helper functions
 │
@@ -312,12 +298,12 @@ cdss-project/
 ├── app/                           # Frontend application
 │   ├── streamlit_app.py          # Main Streamlit interface
 │   └── components/               # Reusable UI components
-│       ├── __init__.py
+│       ├── **init**.py
 │       ├── chat_interface.py
 │       └── source_display.py
 │
 ├── tests/                         # Unit tests
-│   ├── __init__.py
+│   ├── **init**.py
 │   ├── test_database.py
 │   ├── test_embeddings.py
 │   ├── test_retrieval.py
