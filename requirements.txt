@@ -1,0 +1,19 @@
+# --- Environment & Configuration ---
+python-dotenv           # Loads your secrets from the .env file
+
+# --- Database (Memory) ---
+psycopg2-binary         # The official driver to talk to PostgreSQL
+pgvector                # Special tools to handle vector math in the DB
+
+# --- Document Processing (Eyes) ---
+pypdf                   # Reads and extracts text from your PDF files
+pandas                  # Helps handle data tables (like Excel for Python)
+numpy                   # Efficient math operations for data
+
+# --- AI & Embeddings (Brain) ---
+sentence-transformers   # Converts text into numbers (vectors)
+ollama                  # Python library to talk to your local Llama-3 model
+torch                   # The engine behind the AI models (PyTorch)
+
+# --- User Interface (Face) ---
+streamlit               # Creates the web app for you
