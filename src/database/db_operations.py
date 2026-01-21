@@ -126,6 +126,9 @@ def search_similar(
     Returns:
         List of matching documents with content, source, and similarity score
     """
+    # Convert list to string format for pgvector
+    embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
+    
     with get_db_cursor(dict_cursor=True) as cursor:
         if source_filter:
             cursor.execute(
@@ -136,13 +139,13 @@ def search_similar(
                     source_file,
                     chunk_index,
                     metadata,
-                    1 - (embedding <=> %s) as similarity
+                    1 - (embedding <=> %s::vector) as similarity
                 FROM documents
                 WHERE source_file = %s
-                ORDER BY embedding <=> %s
+                ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,
-                (query_embedding, source_filter, query_embedding, top_k)
+                (embedding_str, source_filter, embedding_str, top_k)
             )
         else:
             cursor.execute(
@@ -153,12 +156,12 @@ def search_similar(
                     source_file,
                     chunk_index,
                     metadata,
-                    1 - (embedding <=> %s) as similarity
+                    1 - (embedding <=> %s::vector) as similarity
                 FROM documents
-                ORDER BY embedding <=> %s
+                ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,
-                (query_embedding, query_embedding, top_k)
+                (embedding_str, embedding_str, top_k)
             )
         
         results = cursor.fetchall()
