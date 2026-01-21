@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS documents (
     id SERIAL PRIMARY KEY,
     content TEXT NOT NULL,
-    embedding vector(384),  -- Dimension for sentence-transformers/all-MiniLM-L6-v2
+    embedding vector(1024),  -- Dimension for BAAI/bge-large-en-v1.5
     source_file VARCHAR(255),
     chunk_index INTEGER,
     metadata JSONB,

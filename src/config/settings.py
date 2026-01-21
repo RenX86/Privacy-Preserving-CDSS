@@ -44,9 +44,9 @@ class Settings:
     POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", "5432"))
     
     # === Embedding Model Settings ===
-    # Using sentence-transformers model - this one is small and fast
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-    EMBEDDING_DIMENSION: int = 384  # Dimension for all-MiniLM-L6-v2
+    # Using BGE-Large for high-quality, GPU-friendly embeddings
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
+    EMBEDDING_DIMENSION: int = 1024  # Dimension for BAAI/bge-large-en-v1.5
     
     # === Ollama (Local LLM) Settings ===
     OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")

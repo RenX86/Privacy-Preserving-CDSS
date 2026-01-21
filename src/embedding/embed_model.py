@@ -32,7 +32,7 @@ _model = None
 
 def get_embedding_model():
     """
-    Load the sentence-transformers model.
+    Load the embedding model.
     
     Uses lazy loading - model is only loaded when first needed.
     Subsequent calls return the cached model.
@@ -44,15 +44,32 @@ def get_embedding_model():
     
     if _model is None:
         logger.info(f"Loading embedding model: {settings.EMBEDDING_MODEL}")
+        logger.info("This may take a few minutes for large models...")
         
         try:
             from sentence_transformers import SentenceTransformer
+            import torch
             
-            _model = SentenceTransformer(settings.EMBEDDING_MODEL)
+            # Check GPU availability
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info(f"Using device: {device}")
+            
+            # Load model with trust_remote_code for HuggingFace models
+            _model = SentenceTransformer(
+                settings.EMBEDDING_MODEL,
+                trust_remote_code=True,
+                device=device
+            )
             
             # Log model info
             embedding_dim = _model.get_sentence_embedding_dimension()
             logger.info(f"✓ Model loaded successfully (dimension: {embedding_dim})")
+            
+            # Verify dimension matches settings
+            if embedding_dim != settings.EMBEDDING_DIMENSION:
+                logger.warning(
+                    f"⚠ Dimension mismatch! Model: {embedding_dim}, Settings: {settings.EMBEDDING_DIMENSION}"
+                )
             
         except Exception as e:
             logger.error(f"Failed to load embedding model: {e}")
