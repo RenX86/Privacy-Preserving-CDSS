@@ -1,11 +1,13 @@
 # 🧬 Privacy-Preserving Clinical Decision Support System (CDSS)
 
-> A highly rigorous, locally-hosted RAG pipeline for clinical genomic queries — built to prevent hallucinations, enforce auditability, and never expose patient data externally.
+> A highly rigorous, locally-hosted **Hybrid RAG pipeline** for clinical genomic queries — combining air-gapped local databases with targeted live API calls, built to prevent hallucinations, enforce auditability, and never expose patient data externally.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Structured_DB-336791?style=flat&logo=postgresql&logoColor=white)](https://postgresql.org)
-[![LLM](https://img.shields.io/badge/LLM-Local_Only-8E44AD?style=flat&logo=openai&logoColor=white)]()
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-ClinVar_Local-336791?style=flat&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![VectorDB](https://img.shields.io/badge/Vector_DB-ACMG_%2F_NCCN-1ABC9C?style=flat)]()
+[![ClinGen](https://img.shields.io/badge/ClinGen_API-Live_Expert_Panels-6C3483?style=flat)]()
+[![LLM](https://img.shields.io/badge/LLM-Local_Only-8E44AD?style=flat)]()
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)]()
 [![Status](https://img.shields.io/badge/Status-In_Development-orange?style=flat)]()
 
@@ -15,12 +17,14 @@
 
 - [Overview](#-overview)
 - [Architecture](#-architecture)
+- [Why Hybrid RAG?](#-why-hybrid-rag)
 - [Pipeline Walkthrough](#-pipeline-walkthrough)
   - [Phase 1 — Query Decomposition](#phase-1--query-decomposition)
   - [Phase 2 — Intelligent Routing](#phase-2--intelligent-routing)
   - [Phase 3 — Query Construction](#phase-3--query-construction)
-  - [Phase 4 — Retrieval & Verification](#phase-4--retrieval--verification)
-  - [Phase 5 — Protected Generation](#phase-5--protected-generation)
+  - [Phase 4 — Data Sources](#phase-4--data-sources)
+  - [Phase 5 — Retrieval & Verification](#phase-5--retrieval--verification)
+  - [Phase 6 — Protected Generation](#phase-6--protected-generation)
 - [Tech Stack](#-tech-stack)
 - [Project Structure](#-project-structure)
 - [Setup & Installation](#-setup--installation)
@@ -31,15 +35,16 @@
 
 ## 🔬 Overview
 
-This system is designed to answer complex clinical and genomic queries — such as BRCA1 variant classification, ACMG criteria application, and NCCN protocol retrieval — **with zero hallucinations and full data privacy**.
+This system answers complex clinical and genomic queries — such as BRCA1 variant classification, ACMG criteria application, and NCCN protocol retrieval — **with zero hallucinations and full data privacy**.
 
 **Key design principles:**
 
 - 🔒 **Local-first** — all LLM inference runs on-premise; patient data never leaves the secure environment
-- 🎯 **Deterministic routing** — regex-based fast-path for structured IDs before any LLM is invoked
-- ✅ **Verifiable retrieval** — every retrieved chunk is graded before it reaches the generator
+- 🌐 **Hybrid RAG** — air-gapped local databases for static data + targeted live ClinGen API calls for real-time expert panel rules
+- ⚡ **Deterministic routing** — regex fast-path for structured IDs before any LLM is invoked
+- ✅ **Verifiable retrieval** — every retrieved chunk is graded (Correct / Ambiguous / Incorrect) before generation
 - 📎 **Mandatory citations** — every clinical claim in the output is traceable to a primary source
-- 🚫 **Hard safe-failure** — insufficient data produces a predefined refusal, never a guess
+- 🚫 **Hard safe-failure** — insufficient data produces a predefined refusal, never a hallucinated guess
 
 **Example query this system handles:**
 
@@ -49,7 +54,7 @@ This system is designed to answer complex clinical and genomic queries — such 
 
 ## 🏗️ Architecture
 
-The system is a 5-phase sequential pipeline. Each phase has strict entry/exit conditions before passing context downstream.
+The system is a 6-phase sequential pipeline. Each phase has strict entry/exit conditions before passing context downstream.
 
 ```
 Clinician Query
@@ -59,27 +64,55 @@ Clinician Query
 │  Phase 1        │    │  Phase 2         │    │  Phase 3            │
 │  Query          │───▶│  Intelligent     │───▶│  Query              │
 │  Decomposition  │    │  Routing         │    │  Construction       │
-└─────────────────┘    └──────────────────┘    └─────────────────────┘
-                                                         │
-                              ┌──────────────────────────┤
-                              │                          │
-                              ▼                          ▼
-                       PostgreSQL DB              Vector Database
-                       (ClinVar facts)          (ACMG / NCCN rules)
-                              │                          │
-                              └──────────┬───────────────┘
-                                         │
-                                         ▼
-                              ┌──────────────────────┐    ┌──────────────────────┐
-                              │  Phase 4             │    │  Phase 5             │
-                              │  Retrieval &         │───▶│  Protected           │
-                              │  Verification        │    │  Generation          │
-                              └──────────────────────┘    └──────────────────────┘
-                                                                    │
-                                                                    ▼
-                                                       ✅ Verified Clinical Response
-                                                          with Mandatory Citations
+└─────────────────┘    └──────────────────┘    └──────────┬──────────┘
+                              │                            │
+                              │ (ClinGen bypass)           │
+                              │                            │
+                              ▼                            ▼
+                   ┌─────────────────────────────────────────────────┐
+                   │              Phase 4 — Data Sources              │
+                   │                                                   │
+                   │  🗄️ PostgreSQL (ClinVar)   ✅ Local, air-gapped  │
+                   │  🔮 Vector DB (ACMG/NCCN)  ✅ Local, air-gapped  │
+                   │  🌐 ClinGen REST API        ⚠️ Live external call │
+                   └─────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+                   ┌──────────────────────────────────────────────────┐
+                   │           Phase 5 — Retrieval & Verification      │
+                   │                                                    │
+                   │  Cross-Encoder Re-Ranking                         │
+                   │  CRAG Evaluator (Correct / Ambiguous / Incorrect) │
+                   │  Fallback loop → re-query if ambiguous/incorrect  │
+                   └──────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+                   ┌──────────────────────────────────────────────────┐
+                   │          Phase 6 — Protected Generation           │
+                   │                                                    │
+                   │  Strict System Prompting                          │
+                   │  Self-RAG Internal Critic                         │
+                   │  Forced Citations (Audit Trail)                   │
+                   └──────────────────────────────────────────────────┘
+                                        │
+                                        ▼
+                          ✅ Verified Clinical Response
+                             with Mandatory Citations
 ```
+
+---
+
+## 🔀 Why Hybrid RAG?
+
+This architecture uses **three distinct data sources**, each chosen for a specific reason:
+
+| Data Source | Type | Why |
+|---|---|---|
+| 🗄️ **PostgreSQL (ClinVar)** | Local, air-gapped | ClinVar contains millions of static variant records that can be downloaded and queried locally via SQL. Fast, private, no external calls. |
+| 🔮 **Vector DB (ACMG / NCCN)** | Local, air-gapped | Clinical guidelines are static documents that are chunked, embedded with domain-specific models (PubMedBERT), and stored locally for semantic retrieval. |
+| 🌐 **ClinGen REST API** | Live, external | ClinGen Expert Panels publish **constantly-updating, gene-specific** ACMG rule adaptations. These are too specialized and dynamic to replicate locally — a live API call is the only way to guarantee up-to-date accuracy. **No patient data is sent in this call.** |
+
+> This is what makes the system a **Hybrid RAG**: it combines the privacy and speed of air-gapped local retrieval with the accuracy of targeted real-time external API calls — only when medically necessary.
 
 ---
 
@@ -87,49 +120,50 @@ Clinician Query
 
 ### Phase 1 — Query Decomposition
 
-An incoming clinical question is broken down into typed sub-queries, each targeting a specific data source.
+An incoming clinical question is decomposed into typed sub-queries, each targeting a specific data source.
 
-| Sub-Query | Type | Target |
+| Sub-Query | Type | Destination |
 |---|---|---|
-| **Sub-Query 1** | Data Extraction | Extract variant ID `rs28897696` → PostgreSQL (ClinVar facts) |
+| **Sub-Query 1** | Data Extraction | Detect `rs28897696` → route to PostgreSQL for ClinVar facts |
 | **Sub-Query 2** | Rule Retrieval | Fetch ACMG criteria for pathogenic BRCA1 mutation → Vector DB |
-| **Sub-Query 3** | Protocol Retrieval | Fetch NCCN oncology protocols for breast cancer + BRCA1 → Vector DB |
+| **Sub-Query 3** | Protocol Retrieval | Fetch NCCN protocols for breast cancer + BRCA1 → Vector DB |
 
 ---
 
 ### Phase 2 — Intelligent Routing
 
-A two-layer routing system directs each sub-query to the correct data source without wasting LLM calls.
+A two-layer routing system directs each sub-query to the correct data source without unnecessary LLM calls.
 
 #### Layer 1 — Deterministic Routing (Regex)
 
 ```
 FastAPI backend → Regex scan → Detects structured IDs (e.g. rs28897696, NM_007294.4)
-                                        │
-                          Matched ──────┴────── Not matched
-                             │                       │
-                             ▼                       ▼
-                       PostgreSQL DB          Layer 2 (LLM Router)
+                                          │
+                            Matched ──────┴────── Not matched
+                               │                       │
+                               ▼                       ▼
+                         PostgreSQL DB          Layer 2 (LLM Router)
 ```
 
-A fast Python regex scan runs first. If a strict variant ID or structured keyword is found, the sub-query is routed immediately to PostgreSQL — **no LLM invoked**.
+If a strict variant ID or structured keyword is detected, the sub-query is routed immediately to PostgreSQL — **no LLM invoked, no latency**.
 
 #### Layer 2 — Logical Routing (Local LLM)
 
-If no strict ID is detected, a local LLM performs semantic routing between:
+If no strict ID is detected, a local LLM performs semantic routing between **three targets**:
 
-- **Vector DB** — for rule-based queries (ACMG criteria, NCCN guidelines)
-- **ClinGen API** — for gene-specific curations and expert panel adaptations
+| Target | When Used |
+|---|---|
+| **Vector DB** | Query is about classification rules, guidelines, or protocols (ACMG, NCCN) |
+| **ClinGen API** | Query requires real-time, gene-specific expert panel adaptations |
+| **PostgreSQL** | Query contains a structured ID missed by Layer 1 |
 
 ---
 
 ### Phase 3 — Query Construction
 
-Each routed sub-query is translated into the native query language of its target database.
+Routed sub-queries are translated into the native query language of their target. **ClinGen API calls bypass this phase entirely** — they go directly from the router to the API.
 
 #### Relational DB Path — Text-to-SQL
-
-An LLM or strict Python script converts the English sub-query into a SQL command:
 
 ```sql
 -- Input: "Get the clinical significance for rs28897696"
@@ -140,10 +174,7 @@ WHERE rsid = 'rs28897696';
 
 #### Vector DB Path — Self-Query Retriever
 
-An LLM simultaneously generates:
-
-1. A **vector embedding** for semantic similarity search
-2. **Hard metadata filters** extracted from the query to restrict the search space
+An LLM simultaneously generates a vector embedding **and** hard metadata filters:
 
 ```json
 {
@@ -155,31 +186,67 @@ An LLM simultaneously generates:
 }
 ```
 
-> This dual approach guarantees the Vector DB only searches within the exact right document namespace — preventing cross-contamination and hallucinations from unrelated guidelines.
+> The metadata filter guarantees the Vector DB only searches within the exact right document namespace — preventing cross-contamination between guidelines.
+
+#### ClinGen API Path — Direct Bypass
+
+```
+Layer 2 Router ──(dashed bypass)──▶ ClinGen REST API
+                  No SQL or embedding
+                  construction needed
+```
 
 ---
 
-### Phase 4 — Retrieval & Verification
+### Phase 4 — Data Sources
 
-Retrieved context goes through two verification stages before it can reach the generator.
+All three data sources return context to the verification layer.
+
+#### 🗄️ PostgreSQL — ClinVar (Local)
+
+Stores structured variant records. Queried via the SQL command constructed in Phase 3.
+
+#### 🔮 Vector Database — Medical Protocols (Local)
+
+Stores chunked and embedded ACMG guidelines and NCCN protocols. Indexed using:
+
+- **Chunking:** Semantic splitter preserving full rule definitions within each chunk
+- **Indexing:** Small-to-Big (Parent Document Retriever) pattern — search child chunks, retrieve parent documents for full clinical context
+- **Embeddings:** Domain-specific models — PubMedBERT, ClinicalBERT, MedEIR
+
+#### 🌐 ClinGen REST API — Expert Panels (Live External)
+
+Returns real-time, gene-specific ACMG rule adaptations from ClinGen's curated expert panels.
+
+```http
+GET https://search.clinicalgenome.org/kb/gene-validity?gene=BRCA1
+```
+
+> ⚠️ **Privacy note:** Only the gene symbol (e.g. `BRCA1`) is sent to ClinGen. No patient identifiers, variant IDs, or clinical data are transmitted in this call.
+
+---
+
+### Phase 5 — Retrieval & Verification
+
+All context — from PostgreSQL, Vector DB, **and ClinGen** — passes through the same two verification stages.
 
 #### Cross-Encoder Re-Ranking
 
 ```
-Top-K retrieved chunks
-        │
-        ▼
+Top-K retrieved chunks (from all sources)
+              │
+              ▼
 Cross-Encoder (ms-marco-MiniLM-L-6-v2)
   → Computes deep query ↔ chunk relevance score
   → Re-ranks all chunks by clinical accuracy
-        │
-        ▼
+              │
+              ▼
 Most relevant chunk promoted to position [0]
 ```
 
 #### CRAG Evaluator Agent
 
-A lightweight evaluator grades each chunk independently:
+A lightweight evaluator grades each chunk independently, regardless of source:
 
 | Grade | Action |
 |---|---|
@@ -189,17 +256,13 @@ A lightweight evaluator grades each chunk independently:
 
 ---
 
-### Phase 5 — Protected Generation
+### Phase 6 — Protected Generation
 
-Verified context enters the generation phase, which enforces three layers of guardrails.
+Verified context enters generation with three enforced guardrails.
 
 #### Guardrail 1 — Strict System Prompting
 
-The LLM is instructed via a rigid system prompt to:
-
-- Only synthesize claims **explicitly present** in the provided context
-- Never use external or parametric knowledge
-- Return a safe-failure message if context is insufficient:
+The LLM is instructed to only synthesize claims **explicitly present** in the provided verified context. If context is insufficient:
 
 ```
 "Insufficient clinical data to safely provide an assessment."
@@ -211,23 +274,23 @@ The LLM is instructed via a rigid system prompt to:
 Generate hidden draft response
           │
           ▼
-Verify: Is every claim supported by a retrieved chunk?
+Is every claim supported by a verified chunk?
           │
     ┌─────┴─────┐
-    │           │
    Yes          No
     │           │
     ▼           ▼
-  Pass       Reject draft → Rewrite
+  Pass       Reject → Rewrite automatically
 ```
 
 #### Guardrail 3 — Forced Citations (Audit Trail)
 
-Every factual claim in the final response must include an inline citation to its exact source:
+Every factual claim in the final response includes an inline citation. ClinGen sources are cited alongside local sources:
 
 ```
 rs28897696 is classified as Pathogenic. [Source: ClinVar, rs28897696]
 ACMG criteria applied: PVS1 (very strong), PS1 (strong). [Source: ACMG_2015, Richards et al.]
+ClinGen BRCA1 Expert Panel adaptation applied: domain-specific PM2 threshold. [Source: ClinGen, BRCA1-EP]
 NCCN recommendation: Annual breast MRI + mammography from age 25. [Source: NCCN, Breast-v3.2024]
 ```
 
@@ -244,7 +307,8 @@ NCCN recommendation: Annual breast MRI + mammography from age 25. [Source: NCCN,
 | **Embeddings** | PubMedBERT · ClinicalBERT · MedEIR |
 | **Re-Ranking** | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | **RAG Framework** | LangChain / LlamaIndex |
-| **Data Sources** | ClinVar · ClinGen API · ACMG Guidelines · NCCN Protocols |
+| **Live External API** | ClinGen REST API (Expert Panels) |
+| **Local Data Sources** | ClinVar (PostgreSQL) · ACMG Guidelines · NCCN Protocols (Vector DB) |
 
 ---
 
@@ -253,34 +317,39 @@ NCCN recommendation: Annual breast MRI + mammography from age 25. [Source: NCCN,
 ```
 cdss/
 ├── api/
-│   ├── main.py                  # FastAPI entrypoint
-│   ├── router.py                # Layer 1 & 2 routing logic
-│   └── schemas.py               # Request/response models
+│   ├── main.py                    # FastAPI entrypoint
+│   ├── router.py                  # Layer 1 (Regex) & Layer 2 (LLM) routing
+│   └── schemas.py                 # Request/response models
 ├── pipeline/
-│   ├── decomposition.py         # Query decomposition
+│   ├── decomposition.py           # Query decomposition
 │   ├── construction/
-│   │   ├── text_to_sql.py       # SQL query builder
-│   │   └── self_query.py        # Vector self-query retriever
+│   │   ├── text_to_sql.py         # SQL query builder (PostgreSQL path)
+│   │   └── self_query.py          # Self-Query Retriever (Vector DB path)
+│   ├── sources/
+│   │   ├── postgres_client.py     # ClinVar structured queries
+│   │   ├── vector_client.py       # ACMG / NCCN semantic retrieval
+│   │   └── clingen_client.py      # ClinGen REST API client (live)
 │   ├── retrieval/
-│   │   ├── reranker.py          # Cross-encoder re-ranking
-│   │   └── crag_evaluator.py    # CRAG chunk grader
+│   │   ├── reranker.py            # Cross-encoder re-ranking
+│   │   └── crag_evaluator.py      # CRAG chunk grader
 │   └── generation/
-│       ├── guardrails.py        # System prompt enforcement
-│       ├── self_rag.py          # Internal critic loop
-│       └── citation_enforcer.py # Mandatory citation injection
+│       ├── guardrails.py          # Strict system prompt enforcement
+│       ├── self_rag.py            # Internal critic loop
+│       └── citation_enforcer.py   # Mandatory citation injection
 ├── db/
 │   ├── postgres/
-│   │   └── clinvar_schema.sql   # ClinVar structured schema
+│   │   └── clinvar_schema.sql     # ClinVar structured schema
 │   └── vector/
-│       └── indexing.py          # Chunking + embedding pipeline
+│       └── indexing.py            # Chunking + embedding pipeline
 ├── models/
-│   └── embeddings.py            # Domain-specific embedding loaders
+│   └── embeddings.py              # Domain-specific embedding loaders
 ├── tests/
 │   ├── test_routing.py
+│   ├── test_clingen_client.py
 │   ├── test_retrieval.py
 │   └── test_generation.py
 ├── docs/
-│   └── architecture.drawio      # System architecture diagram
+│   └── CDSS_Architecture.drawio   # System architecture diagram
 ├── .env.example
 ├── requirements.txt
 └── README.md
@@ -316,26 +385,31 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env with your DB credentials and LLM endpoint
 ```
 
 ```env
+# Local databases
 POSTGRES_URL=postgresql://user:password@localhost:5432/clinvar
 VECTOR_DB_URL=http://localhost:6333
+
+# Local LLM
 LOCAL_LLM_URL=http://localhost:11434
 EMBEDDING_MODEL=pubmedbert-base-embeddings
+
+# ClinGen API (no auth required for public endpoints)
+CLINGEN_API_URL=https://search.clinicalgenome.org/kb
 ```
 
 ### 4. Initialize databases
 
 ```bash
-# PostgreSQL
+# PostgreSQL — ClinVar schema
 psql -U postgres -f db/postgres/clinvar_schema.sql
 
-# Vector DB (Docker)
+# Vector DB — start with Docker
 docker run -p 6333:6333 qdrant/qdrant
 
-# Index medical documents
+# Index medical documents into Vector DB
 python db/vector/indexing.py
 ```
 
@@ -357,18 +431,20 @@ curl -X POST http://localhost:8000/query \
 
 ## 🗺️ Roadmap
 
-- [x] System architecture design
+- [x] System architecture design (Hybrid RAG)
 - [x] Project work plan & phase definitions
 - [ ] Phase 1 — PostgreSQL schema + ClinVar data ingestion
-- [ ] Phase 1 — Vector DB setup + medical document indexing
-- [ ] Phase 2 — Regex routing layer (FastAPI)
-- [ ] Phase 2 — LLM logical router
+- [ ] Phase 1 — Vector DB setup + ACMG/NCCN document indexing
+- [ ] Phase 2 — Layer 1 Regex routing (FastAPI)
+- [ ] Phase 2 — Layer 2 LLM logical router (PostgreSQL / Vector DB / ClinGen)
 - [ ] Phase 3 — Text-to-SQL constructor
-- [ ] Phase 3 — Self-Query Retriever
-- [ ] Phase 4 — Cross-encoder re-ranker integration
-- [ ] Phase 4 — CRAG evaluator agent
-- [ ] Phase 5 — Self-RAG internal critic
-- [ ] Phase 5 — Citation enforcer
+- [ ] Phase 3 — Self-Query Retriever with metadata filters
+- [ ] Phase 4 — ClinGen REST API client with privacy-safe call pattern
+- [ ] Phase 5 — Cross-encoder re-ranker (all sources unified)
+- [ ] Phase 5 — CRAG evaluator agent + fallback loop
+- [ ] Phase 6 — Strict system prompt + safe-failure message
+- [ ] Phase 6 — Self-RAG internal critic
+- [ ] Phase 6 — Citation enforcer (ClinGen, ClinVar, ACMG, NCCN)
 - [ ] End-to-end integration testing
 - [ ] Clinical validation with domain experts
 - [ ] User Acceptance Testing (UAT)
@@ -380,9 +456,9 @@ curl -X POST http://localhost:8000/query \
 Contributions are welcome. Please open an issue first to discuss any significant changes.
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/phase-2-routing`)
-3. Commit your changes (`git commit -m 'Add LLM logical router'`)
-4. Push to the branch (`git push origin feature/phase-2-routing`)
+2. Create a feature branch (`git checkout -b feature/clingen-api-client`)
+3. Commit your changes (`git commit -m 'Add ClinGen REST API client with privacy-safe pattern'`)
+4. Push to the branch (`git push origin feature/clingen-api-client`)
 5. Open a Pull Request
 
 ---
