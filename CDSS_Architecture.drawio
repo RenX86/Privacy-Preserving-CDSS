@@ -1,0 +1,194 @@
+<mxfile host="65bd71144e">
+    <diagram id="cdss-arch-v2" name="CDSS Architecture">
+        <mxGraphModel dx="1626" dy="779" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="1">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="Privacy-Preserving Clinical Decision Support System (CDSS)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a1a2e;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="20" width="1420" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" value="RAG Architecture · Local LLMs · Deterministic Routing · Hallucination Prevention · Full Audit Trail" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="58" width="1420" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#2E86C1;strokeWidth=2;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="90" width="240" height="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9E7;strokeColor=#F39C12;strokeWidth=2;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="90" width="250" height="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4ECF7;strokeColor=#8E44AD;strokeWidth=2;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="90" width="270" height="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8F5;strokeColor=#1ABC9C;strokeWidth=2;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="860" y="90" width="260" height="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEDEC;strokeColor=#E74C3C;strokeWidth=2;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="1140" y="90" width="270" height="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg6" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAFAF1;strokeColor=#27AE60;strokeWidth=2;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="1430" y="90" width="200" height="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="h1" value="PHASE 1&#xa;Query Decomposition" style="text;html=1;strokeColor=#2E86C1;fillColor=#2E86C1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="100" width="210" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="h2" value="PHASE 2&#xa;Routing" style="text;html=1;strokeColor=#F39C12;fillColor=#F39C12;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="315" y="100" width="220" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="h3" value="PHASE 3&#xa;Query Construction" style="text;html=1;strokeColor=#8E44AD;fillColor=#8E44AD;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="100" width="240" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="h4" value="PHASE 4&#xa;Retrieval &amp; Verification" style="text;html=1;strokeColor=#1ABC9C;fillColor=#1ABC9C;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="875" y="100" width="230" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="h5" value="PHASE 5&#xa;Protected Generation" style="text;html=1;strokeColor=#E74C3C;fillColor=#E74C3C;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="100" width="240" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="h6" value="OUTPUT&#xa;Clinical Response" style="text;html=1;strokeColor=#27AE60;fillColor=#27AE60;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="1445" y="100" width="170" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="input" value="👨‍⚕️ Clinician Query&#xa;&#xa;&quot;What is the clinical significance&#xa;of rs28897696 and what are the&#xa;ACMG criteria and NCCN protocols&#xa;for pathogenic BRCA1 mutations?&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4A90D9;strokeWidth=2;fontSize=11;fontColor=#FFFFFF;align=center;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="170" width="210" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="sq1" value="Sub-Query 1&#xa;―――――――――&#xa;Data Extraction&#xa;Extract variant rs28897696&#xa;→ Route to PostgreSQL DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2E86C1;strokeColor=#1A5276;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="320" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="sq2" value="Sub-Query 2&#xa;―――――――――&#xa;Rule Retrieval&#xa;Fetch ACMG criteria for&#xa;pathogenic BRCA1 mutation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2E86C1;strokeColor=#1A5276;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="440" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="sq3" value="Sub-Query 3&#xa;―――――――――&#xa;Protocol Retrieval&#xa;Fetch NCCN oncology protocols&#xa;for breast cancer + BRCA1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2E86C1;strokeColor=#1A5276;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="560" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-in-sq1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E86C1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="input" target="sq1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-in-sq2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E86C1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="input" target="sq2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-in-sq3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E86C1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="input" target="sq3" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="160" y="410"/>
+                            <mxPoint x="160" y="410"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="route1" value="Layer 1 — Deterministic (Regex)&#xa;―――――――――――――――――&#xa;FastAPI Regex scan detects strict&#xa;IDs or structured keywords&#xa;(e.g. rs28897696)&#xa;&#xa;⚡ Instant routing to PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F39C12;strokeColor=#D68910;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="315" y="320" width="220" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="route2" value="Layer 2 — Logical (LLM Router)&#xa;―――――――――――――――――&#xa;If no strict ID found, Local LLM&#xa;performs intelligent routing:&#xa;&#xa;→ Vector DB  (ACMG/NCCN rules)&#xa;→ ClinGen API (gene-specific)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E67E22;strokeColor=#A04000;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="315" y="480" width="220" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-sq1-r1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#F39C12;strokeWidth=2;dashed=0;" parent="1" source="sq1" target="route1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-sq2-r2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E67E22;strokeWidth=2;" parent="1" source="sq2" target="route2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-sq3-r2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E67E22;strokeWidth=2;" parent="1" source="sq3" target="route2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="sql" value="Text-to-SQL Constructor&#xa;―――――――――――――――――&#xa;LLM or Python script translates&#xa;English query → SQL command&#xa;&#xa;SELECT clinical_significance&#xa;FROM clinvar&#xa;WHERE rsid = &#39;rs28897696&#39;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8E44AD;strokeColor=#6C3483;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="300" width="240" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="sqr" value="Self-Query Retriever&#xa;―――――――――――――――――&#xa;LLM generates:&#xa;• Vector embedding for semantic search&#xa;• Hard metadata filters extracted:&#xa;&#xa;{&quot;gene&quot;: &quot;BRCA1&quot;,&#xa; &quot;source&quot;: &quot;ACMG_2015&quot;}&#xa;&#xa;→ Prevents hallucinations by&#xa;   restricting search space" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9B59B6;strokeColor=#6C3483;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="480" width="240" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="mq-label" value="Multi-Query Translation" style="text;html=1;strokeColor=none;fillColor=#F4ECF7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=3;fontColor=#8E44AD;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="710" width="240" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-r1-sql" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#8E44AD;strokeWidth=2;" parent="1" source="route1" target="sql" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-r2-sqr" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#9B59B6;strokeWidth=2;" parent="1" source="route2" target="sqr" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="psql" value="🗄️ PostgreSQL&#xa;(ClinVar Structured Data)&#xa;―――――――――――&#xa;Stores variant IDs, rsIDs,&#xa;clinical significance records&#xa;e.g. rs28897696 → Pathogenic" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#1F618D;strokeColor=#154360;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="875" y="280" width="230" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="vdb" value="🔮 Vector Database&#xa;(Medical Protocols)&#xa;―――――――――――&#xa;ACMG classification rules&#xa;NCCN oncology guidelines&#xa;ClinicalBERT embeddings" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#117A65;strokeColor=#0E6655;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="875" y="460" width="230" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-sql-psql" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1F618D;strokeWidth=2;" parent="1" source="sql" target="psql" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-sqr-vdb" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#117A65;strokeWidth=2;" parent="1" source="sqr" target="vdb" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rerank" value="Cross-Encoder Re-Ranking&#xa;―――――――――――――――――&#xa;Deeply analyzes query ↔ chunk&#xa;semantic relationship&#xa;&#xa;Model: ms-marco-MiniLM-L-6-v2&#xa;&#xa;→ Forces most clinically accurate&#xa;   rule to top position" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ABC9C;strokeColor=#148F77;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="280" width="240" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="crag" value="CRAG Evaluator Agent&#xa;―――――――――――――――――&#xa;Grades each retrieved chunk:&#xa;&#xa;✅ Correct → Pass to generation&#xa;⚠️ Ambiguous → Trigger fallback&#xa;❌ Incorrect → Reject + retry&#xa;&#xa;Ensures only verified context&#xa;reaches the LLM generator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#16A085;strokeColor=#0E6655;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="460" width="240" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-psql-rr" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1ABC9C;strokeWidth=2;" parent="1" source="psql" target="rerank" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-vdb-crag" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#16A085;strokeWidth=2;" parent="1" source="vdb" target="crag" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="prompt" value="Strict System Prompting&#xa;―――――――――――――――――&#xa;LLM restricted ONLY to provided&#xa;verified context. No external&#xa;knowledge allowed.&#xa;&#xa;Insufficient data →&#xa;&quot;Insufficient clinical data to&#xa;safely provide an assessment.&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E74C3C;strokeColor=#A93226;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1430" y="190" width="185" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="selfrag" value="Self-RAG Internal Critic&#xa;―――――――――――――――――&#xa;1. Generate hidden draft&#xa;2. Verify every claim against&#xa;   retrieved chunks&#xa;3. Unverified drafts → Reject&#xa;4. Auto-rewrite until verified" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C0392B;strokeColor=#922B21;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1430" y="380" width="185" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="cite" value="Forced Citations&#xa;(Audit Trail)&#xa;―――――――――――――――――&#xa;Every medical claim appends&#xa;an exact citation:&#xa;&#xa;[Source: ClinVar, rs28897696]&#xa;[Source: ACMG_2015, PM2]&#xa;[Source: NCCN, breast-v3.2024]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A93226;strokeColor=#7B241C;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="1430" y="560" width="185" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-rr-prompt" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E74C3C;strokeWidth=2;" parent="1" source="rerank" target="prompt" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-crag-selfrag" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#C0392B;strokeWidth=2;" parent="1" source="crag" target="selfrag" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-selfrag-cite" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#A93226;strokeWidth=2;" parent="1" source="selfrag" target="cite" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="output" value="✅ Clinical Response&#xa;―――――――――――&#xa;Accurate, verified answer&#xa;with full citations.&#xa;&#xa;Example:&#xa;rs28897696 is Pathogenic.&#xa;ACMG criteria: PVS1, PS1&#xa;NCCN: Annual MRI + mammo&#xa;&#xa;[Source: ClinVar, rs28897696]&#xa;[Source: ACMG_2015, PVS1]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#27AE60;strokeColor=#196F3D;strokeWidth=2;fontSize=10;fontColor=#FFFFFF;align=center;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1445" y="750" width="170" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-cite-out" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#27AE60;strokeWidth=3;" parent="1" source="cite" target="output" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="embed" value="Domain-Specific Embeddings&#xa;PubMedBERT · ClinicalBERT · MedEIR&#xa;(Used during Vector DB indexing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2C3E50;strokeColor=#1A252F;strokeWidth=1;fontSize=10;fontColor=#BDC3C7;align=center;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="875" y="650" width="230" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="local-llm" value="🔒 All LLM processing is LOCAL&#xa;Patient data never leaves&#xa;the secure environment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1C2833;strokeColor=#BDC3C7;strokeWidth=1;fontSize=10;fontColor=#BDC3C7;align=center;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="730" width="240" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="a-crag-fallback" value="Fallback: Re-query" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E74C3C;strokeWidth=1;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;startArrow=none;" parent="1" source="crag" target="sqr" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1140" y="550"/>
+                            <mxPoint x="560" y="550"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="legend-title" value="LEGEND" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="900" width="100" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="l1" value="Query Decomposition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2E86C1;strokeColor=#1A5276;fontSize=9;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="l2" value="Intelligent Routing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F39C12;strokeColor=#D68910;fontSize=9;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="205" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="l3" value="Query Construction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8E44AD;strokeColor=#6C3483;fontSize=9;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="355" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="l4" value="Retrieval &amp; Verification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ABC9C;strokeColor=#148F77;fontSize=9;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="505" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="l5" value="Protected Generation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E74C3C;strokeColor=#A93226;fontSize=9;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="655" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="l6" value="Verified Output" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#27AE60;strokeColor=#196F3D;fontSize=9;fontColor=#FFFFFF;" parent="1" vertex="1">
+                    <mxGeometry x="805" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="l7" value="Fallback / Error Loop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E74C3C;strokeWidth=2;fontSize=9;fontColor=#E74C3C;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="955" y="925" width="140" height="25" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
