@@ -369,7 +369,7 @@ cdss/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/cdss.git
+git clone https://github.com/RenX86/cdss.git
 cd cdss
 ```
 
@@ -407,7 +407,7 @@ CLINGEN_API_URL=https://search.clinicalgenome.org/kb
 psql -U postgres -f db/postgres/clinvar_schema.sql
 
 # Vector DB — start with Docker
-docker run -p 6333:6333 qdrant/qdrant
+docker run -p 5757:5757 qdrant/qdrant
 
 # Index medical documents into Vector DB
 python db/vector/indexing.py
@@ -416,13 +416,13 @@ python db/vector/indexing.py
 ### 5. Start the API
 
 ```bash
-uvicorn api.main:app --reload --port 8000
+uvicorn api.main:app --reload --port 5656
 ```
 
 ### 6. Test a query
 
 ```bash
-curl -X POST http://localhost:8000/query \
+curl -X POST http://localhost:5656/query \
   -H "Content-Type: application/json" \
   -d '{"query": "What is the clinical significance of rs28897696 for BRCA1?"}'
 ```
