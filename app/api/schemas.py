@@ -5,12 +5,12 @@ class QueryRequest(BaseModel):
     query: str
     patient_id: Optional[str] = None
 
-class citations(BaseModel):
-    answer: str
+class citation(BaseModel):
     source: str
+    reference: str
 
 class QueryResponse(BaseModel):
     answer: str
-    citations: List[citations]
+    citations: List[citation]
     confidence: str
     safe_failure: bool

@@ -1,0 +1,39 @@
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: cdss_postgres
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./app/db/postgres/clinvar_schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cdss_user} -d ${POSTGRES_DB:-cdss_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    #restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cdss_pgadmin
+    env_file:
+      - .env
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    #restart: unless-stopped
+
+volumes:
+  pgvector_data:
+    driver: local
+  pgadmin_data:
+    driver: local
