@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.api.schemas import QueryRequest, QueryResponse, citation
 from app.pipeline.decomposition import decompose_query
+from app.pipeline.sources.postgres_client import get_variant_by_rsid, get_variant_by_gene
 
 router = APIRouter()
 
