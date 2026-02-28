@@ -1,7 +1,23 @@
+import re
 from fastapi import APIRouter
 from app.api.schemas import QueryRequest, QueryResponse, citation
 from app.pipeline.decomposition import decompose_query
+
+#data sources
 from app.pipeline.sources.postgres_client import get_variant_by_rsid, get_variant_by_gene
+from app.pipeline.sources.vector_client import search_documents
+from app.pipeline.sources.clingen_client import get_gene_validity, extract_gene_from_query
+
+#retrival and verification
+from app.pipeline.retrival.reranker import (
+    rerank_chunks, from_postgres_result, from_vector_result, from_clingen_result
+)
+from app.pipeline.retrieval.crag_evaluator import evaluate_chunks, has_sufficient_context
+
+#generation
+from app.pipeline.generation.guardrails import SAFE_FAILURE_MESSAGE
+from app.pipeline.generation.self_rag import generate_answer, self_rag_critic
+from app.pipeline.generation.citation_enforcer import extract_citations
 
 router = APIRouter()
 
@@ -12,22 +28,80 @@ def health_check():
 
 @router.post("/query", response_model=QueryResponse)
 def handle_query(request: QueryRequest):
-    """
-    Handles incoming clinical queries by decomposing them into sub-queries and routing them to appropriate data sources.
-    """
-    sub_queries = decompose_query(request.query)
+    
+    query = request.query
+    sub_queries = decompose_query(query)
 
-    routing_summary = []
+    all_chunks = []
+
+    gene = extract_gene_from_query(query)
 
     for sq in sub_queries:
-        routing_summary.append(f"[{sq.target.upper()}] {sq.text}")
+
+        if sq.target == "postgres":
+
+            rsids = re.findall(r'rs\d+', sq.text)
+            for rsid in rsids:
+                result = get_variant_by_rsid(rsid)
+                if result:
+                    all_chunks.append(from_postgres_result(result))
+
+            if gene and not rsids:
+                results = get_variant_by_gene(gene)
+                for r in results:
+                    all_chunks.append(from_postgres_result(r))
+        
+        elif sq.target == "vector_db":
+
+            source_filter = None
+            if sq.query_type == "rule_retrieval":
+                source_filter = "ACMG_2015"
+            elif sq.query_type == "protocol_retrieval":
+                source_filter = "NCCN_Breast_v3"
+
+            results = search_documents(sq.text, top_k=5, source_filter=source_filter)
+            for r in results:
+                all_chunks.append(from_vector_result(r))
+            
+        elif sq.target == "clingen":
+            if gene:
+                results = get_gene_validity(gene)
+                for r in results:
+                    all_chunks.append(from_clingen_result(r,gene))
+
+    ranked_chunks = rerank_chunks(query, all_chunks)
+    evaluation    = evaluate_chunks(query, ranked_chunks)
+    verified      = evaluation["correct"]
+
+    if not has_sufficient_context(evaluation):
+        return QueryResponse(
+            answer=SAFE_FAILURE_MESSAGE,
+            citations=[],
+            confidence="low",
+            safe_failure=True
+        )
+    
+    draft = generate_answer(query, verified)
+    answer = self_rag_critic(query, draft, verified)
+
+    raw_citations = extract_citations(answer, verified)
+    citations = [
+        Citation(source=c["source"], reference=c["reference"])
+        for c in raw_citations
+    ]
+
+    if len(verified) >= 3:
+        confidence = "high"
+    elif len(verified) >= 1:
+        confidence = "medium"
+    else:
+        confidence = "low"
 
     return QueryResponse(
-        answer="Query decomposed succesfully. Pipeline not yet fully connected.",
-        citations=[
-            citation(source="Decomposer", reference=summary)
-            for summary in routing_summary
-        ],
-        confidence="low",
+        answer=answer,
+        citations=citations,
+        confidence=confidence,
         safe_failure=False
     )
+
+    
