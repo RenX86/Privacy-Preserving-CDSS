@@ -43,10 +43,11 @@ def from_postgres_result(result: dict) -> RetrievedChunk:
     )
 
 def from_vector_result(result: dict) -> RetrievedChunk:
+    text = result.get("parent_text") or result.get("chunk_text", "")
     return RetrievedChunk(
-        text=result.get("text", "unknown"),
-        source=result.get("source", "unknown"),
-        reference=result.get("reference", "unknown")
+        text=text,
+        source=result.get("source", "VectorDB"),
+        reference=result.get("source", "unknown")
     )
 
 def from_clingen_result(result: dict) -> RetrievedChunk:

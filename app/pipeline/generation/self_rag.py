@@ -29,7 +29,7 @@ Answer the query using ONLY the context above. Cite every claim."""
                 {"role": "user", "content": user_message}
             ]
         )
-        return response["message"]["content"]
+        return response.message.content
 
     except Exception as e:
         print(f"[LLM] Error calling Ollama: {e}")
@@ -59,7 +59,7 @@ Begin your rewrite immediately without any preamble."""
                 {"role": "user", "content": critic_prompt}
             ]
         )
-        result = response["message"]["content"].strip()
+        result = response.message.content.strip()
         
         if result.upper().startswith("VALID"):
             return draft_answer
