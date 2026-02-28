@@ -1,6 +1,6 @@
 import re
 from fastapi import APIRouter
-from app.api.schemas import QueryRequest, QueryResponse, citation
+from app.api.schemas import QueryRequest, QueryResponse, Citation
 from app.pipeline.decomposition import decompose_query
 
 #data sources
@@ -9,7 +9,7 @@ from app.pipeline.sources.vector_client import search_documents
 from app.pipeline.sources.clingen_client import get_gene_validity, extract_gene_from_query
 
 #retrival and verification
-from app.pipeline.retrival.reranker import (
+from app.pipeline.retrieval.reranker import (
     rerank_chunks, from_postgres_result, from_vector_result, from_clingen_result
 )
 from app.pipeline.retrieval.crag_evaluator import evaluate_chunks, has_sufficient_context
@@ -53,13 +53,12 @@ def handle_query(request: QueryRequest):
         
         elif sq.target == "vector_db":
 
-            source_filter = None
             if sq.query_type == "rule_retrieval":
-                source_filter = "ACMG_2015"
+                results = search_documents(sq.text, top_k=5, category_filter="guideline")
             elif sq.query_type == "protocol_retrieval":
-                source_filter = "NCCN_Breast_v3"
-
-            results = search_documents(sq.text, top_k=5, source_filter=source_filter)
+                results = search_documents(sq.text, top_k=5, category_filter="protocol")
+            else:
+                results = search_documents(sq.text, top_k=5)
             for r in results:
                 all_chunks.append(from_vector_result(r))
             
@@ -104,4 +103,3 @@ def handle_query(request: QueryRequest):
         safe_failure=False
     )
 
-    
