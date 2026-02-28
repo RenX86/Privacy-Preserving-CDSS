@@ -19,6 +19,8 @@ from app.pipeline.generation.guardrails import SAFE_FAILURE_MESSAGE
 from app.pipeline.generation.self_rag import generate_answer, self_rag_critic
 from app.pipeline.generation.citation_enforcer import extract_citations
 
+from app.pipeline.sources.gnomad_client import get_allele_frequency
+
 router = APIRouter()
 
 
@@ -44,6 +46,19 @@ def handle_query(request: QueryRequest):
             for rsid in rsids:
                 result = get_variant_by_rsid(rsid)
                 if result:
+                    # Also fetch population frequency from gnomAD
+                    freq_data = get_allele_frequency(rsid)
+                    if freq_data:
+                        freq_text = (
+                            f"Population frequency for {rsid}: "
+                            f"AF={freq_data['allele_frequency']:.6f}. "
+                            f"{'BA1 rule APPLIES (common variant → Benign).' if freq_data['ba1_applicable'] else 'Variant is rare in population.'}"
+                        )
+                        all_chunks.append(RetrievedChunk(
+                            text=freq_text,
+                            source="gnomAD",
+                            reference=rsid
+                        ))
                     all_chunks.append(from_postgres_result(result))
 
             if gene and not rsids:

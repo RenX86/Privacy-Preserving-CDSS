@@ -157,3 +157,5 @@ target/
 .spyderproject
 .spyproject
 Trash/
+
+docs/
