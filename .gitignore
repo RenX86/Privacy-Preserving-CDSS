@@ -143,6 +143,7 @@ ipython_config.py
 *.log
 *.tmp
 *.temp
+tmp/
 
 # ========================
 # Node (occasional use)
