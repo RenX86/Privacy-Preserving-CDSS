@@ -24,16 +24,16 @@ def search_documents(query_text: str, top_k: int = 5, source_filter: str = None,
 
     if filter_param:
         sql = f""" 
-        SELECT id, source, category, gene, chunk_text, metadata,
+        SELECT id, source, category, gene, chunk_text, metadata, parent_text,
             1 - (embedding <=> %s::vector) AS similarity
         FROM medical_documents
         {where_clause}
         ORDER BY embedding <=> %s::vector
         LIMIT %s;"""
-        params = (query_vector, query_vector, filter_param, top_k)
+        params = (query_vector, filter_param, query_vector, top_k)
     else:
         sql = """
-        SELECT id, source, category, gene, chunk_text, metadata,
+        SELECT id, source, category, gene, chunk_text, metadata, parent_text,
             1 - (embedding <=> %s::vector) AS similarity
         FROM medical_documents
         ORDER BY embedding <=> %s::vector
