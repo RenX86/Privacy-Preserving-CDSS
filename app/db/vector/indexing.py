@@ -118,7 +118,7 @@ def discover_documents(docs_folder: str) -> list[dict]:
         with open(manifest_path, "r") as f:
             manifest = json.load(f)
     else:
-        manifest = []
+        manifest = {}
         print("⚠️  No manifest.json found — using filenames as source names")
 
     documents = []
@@ -128,7 +128,7 @@ def discover_documents(docs_folder: str) -> list[dict]:
     }
 
     for subfolder, category in category_map.items():
-        subfolder_path = os.path.join(docs_folder, subfolder)
+        folder_path = os.path.join(docs_folder, subfolder)
         if not os.path.exists(folder_path):
             continue
         for filename in sorted(os.listdir(folder_path)):
@@ -137,7 +137,7 @@ def discover_documents(docs_folder: str) -> list[dict]:
             meta = manifest.get(filename, {})
             documents.append({
                 "filepath": os.path.join(folder_path, filename),
-                "source": meta.get("source", filename.resplit(".",1)[0]),
+                "source": meta.get("source", filename.rsplit(".",1)[0]),
                 "category": category,
                 "gene": meta.get("gene", None)
             })
