@@ -2,27 +2,29 @@ import os
 import re
 import psycopg2
 import json
-import fitz   # PyMuPDF — reads PDFs
-from sentence_transformers import SentenceTransformer
+import fitz   # PyMuPDF — installed as 'pymupdf', imported as 'fitz'
+from app.models.embeddings import embed_text
 from app.config import settings
 
 DOCS_FOLDER = "docs"
-_model      = SentenceTransformer(settings.EMBEDDING_MODEL)
 
 
 # ─── STEP 1: READ THE FILE ────────────────────────────────────────────────────
 
 def read_file(filepath: str) -> str:
-    
+
     ext = os.path.splitext(filepath)[1].lower()
 
     if ext == ".pdf":
         doc = fitz.open(filepath)
-        text = ""
+        pages = []
         for page in doc:
-            text += page.get_text()
+            page_text = page.get_text().strip()
+            if page_text:
+                pages.append(page_text)
         doc.close()
-        return text
+        # Join pages with double newlines as a natural boundary marker
+        return "\n\n".join(pages)
 
     elif ext == ".txt":
         with open(filepath, "r", encoding="utf-8") as f:
@@ -34,19 +36,55 @@ def read_file(filepath: str) -> str:
 
 # ─── STEP 2: SEMANTIC SPLITTER ────────────────────────────────────────────────
 
+# Matches common clinical document section headers:
+# - Numbered: "1. Introduction", "1.1 Background", "Table 1", "Figure 2"
+# - ALL CAPS lines: "INTRODUCTION", "METHODS"
+# - Title-case lines followed by colon: "Criteria:"
+# - Markdown: "## Section"
 SECTION_HEADER = re.compile(
-    r'(?=^(?:[A-Z]{2,5}\d?\s[-–]|#{1,3}\s|\d+\.\s[A-Z]))',
+    r'(?=^(?:'
+    r'\d+\.\d*\s+[A-Z]'              # 1. Title or 1.1 Title
+    r'|\d+\.\s+[A-Z]'                # 1. Title
+    r'|[A-Z]{3,}(?:\s+[A-Z]{3,})*\s*$'  # ALL CAPS HEADER
+    r'|#{1,3}\s'                     # Markdown ## Header
+    r'|Table\s+\d+'                  # Table 1, Table 2
+    r'|Figure\s+\d+'                 # Figure 1
+    r'|Appendix'                     # Appendix sections
+    r'))',
     re.MULTILINE
 )
 
-def semantic_split(text: str) -> list[str]:
-    
+MIN_SECTION_CHARS = 200   # ignore tiny fragments like title pages
+
+def semantic_split(text: str, target_sections: int = 30) -> list[str]:
+    """
+    Split document text into meaningful parent sections.
+    Falls back progressively to ensure we always get multiple sections.
+    """
+    # Attempt 1: regex-based section headers
     sections = SECTION_HEADER.split(text)
-    sections = [s.strip() for s in sections if len(s.strip()) > 80]
+    sections = [s.strip() for s in sections if len(s.strip()) >= MIN_SECTION_CHARS]
 
-    if len(sections) <= 1:
-        sections = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 80]
+    if len(sections) >= 5:
+        print(f"   Regex split -> {len(sections)} sections")
+        return sections
 
+    # Attempt 2: split on double-newlines (paragraph boundaries = page boundaries from read_file)
+    sections = [p.strip() for p in text.split("\n\n") if len(p.strip()) >= MIN_SECTION_CHARS]
+
+    if len(sections) >= 5:
+        print(f"   Paragraph split -> {len(sections)} sections")
+        return sections
+
+    # Attempt 3: fixed-size chunking — always works regardless of PDF format
+    print("   [WARN] Falling back to fixed-size chunking")
+    chunk_size = max(500, len(text) // target_sections)
+    sections = []
+    for i in range(0, len(text), chunk_size):
+        chunk = text[i:i + chunk_size].strip()
+        if len(chunk) >= MIN_SECTION_CHARS:
+            sections.append(chunk)
+    print(f"   Fixed-size split -> {len(sections)} sections")
     return sections
 
 
@@ -88,12 +126,12 @@ def insert_chunk(conn, source, category, gene, child_text, parent_text, embeddin
 # ─── STEP 5: INDEX ONE DOCUMENT ───────────────────────────────────────────────
 
 def index_document(filepath, source, category, gene=None):
-    print(f"\n📄 Reading: {os.path.basename(filepath)}")
+    print(f"\n--- Reading: {os.path.basename(filepath)}")
 
     text            = read_file(filepath)
     parent_sections = semantic_split(text)
 
-    print(f"   Semantic split → {len(parent_sections)} sections")
+    print(f"   Semantic split -> {len(parent_sections)} sections")
 
     conn           = psycopg2.connect(settings.POSTGRES_URL)
     total_children = 0
@@ -102,13 +140,13 @@ def index_document(filepath, source, category, gene=None):
         for parent in parent_sections:
             children = make_child_chunks(parent)
             for child in children:
-                embedding = _model.encode(child).tolist()
+                embedding = embed_text(child)
                 insert_chunk(conn, source, category, gene, child, parent, embedding)
                 total_children += 1
     finally:
         conn.close()
 
-    print(f"   ✅ {total_children} child chunks indexed")
+    print(f"   [OK] {total_children} child chunks indexed")
 
 def discover_documents(docs_folder: str) -> list[dict]:
 
@@ -119,7 +157,7 @@ def discover_documents(docs_folder: str) -> list[dict]:
             manifest = json.load(f)
     else:
         manifest = {}
-        print("⚠️  No manifest.json found — using filenames as source names")
+        print("[WARN] No manifest.json found -- using filenames as source names")
 
     documents = []
     category_map = {
@@ -145,17 +183,15 @@ def discover_documents(docs_folder: str) -> list[dict]:
     return documents
 
 if __name__=="__main__":
-    print("🚀 Starting semantic document indexing...")
+    print("*** Starting semantic document indexing...")
 
     documents = discover_documents(DOCS_FOLDER)
 
     if not documents:
-        print("⚠️  No documents found. Add PDFs to docs/guidelines/ or docs/protocols/")
+        print("[WARN] No documents found. Add PDFs to docs/guidelines/ or docs/protocols/")
     else:
         print(f" Found {len(documents)} documents:")
         for doc in documents:
             index_document(**doc)
 
-    print("\n✅ Indexing complete!")
-
-
+    print("\n[OK] Indexing complete!")

@@ -1,5 +1,9 @@
+import re
+import logging
 import ollama
 from app.config import settings
+
+log = logging.getLogger("cdss.self_rag")
 from app.pipeline.generation.guardrails import (
     build_system_prompt,
     build_context_block,
@@ -10,17 +14,25 @@ from app.pipeline.retrieval.reranker import RetrievedChunk
 def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
 
     if not verified_chunks:
+        log.warning("No verified chunks — returning safe failure message")
         return SAFE_FAILURE_MESSAGE
 
     system_prompt = build_system_prompt()
     context_block = build_context_block(verified_chunks)
 
-    user_message = f"""CLINICAL QUERY: {query}
+    user_message = f"""{context_block}
 
-{context_block}
+CLINICAL QUERY: {query}
 
-Answer the query using ONLY the context above. Cite every claim."""
+INSTRUCTIONS — follow these steps in order:
+1. Look at VARIANT DATABASE FACTS: state the specific variant's classification, gene, and associated conditions directly from that section.
+2. Look at CLINICAL GUIDELINES: identify any criteria codes (PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4) or classification rules mentioned that are relevant to this variant type.
+3. Write a concise clinical answer that directly addresses the query.
+4. Cite every claim: [Source: name, Reference: id].
+5. If a specific criterion is not mentioned in the CLINICAL GUIDELINES section, say "criteria details not available in retrieved guidelines" — do NOT invent criteria names.
+6. Do NOT summarize the entire guideline document. Answer ONLY what was asked."""
 
+    log.info(f"Calling Ollama [{settings.LOCAL_LLM_MODEL}] to generate answer ({len(verified_chunks)} verified chunks)")
     try:
         response = ollama.chat(
             model=settings.LOCAL_LLM_MODEL,
@@ -29,43 +41,98 @@ Answer the query using ONLY the context above. Cite every claim."""
                 {"role": "user", "content": user_message}
             ]
         )
-        return response.message.content
+        answer = response.message.content
+        log.info(f"Draft answer generated ({len(answer)} chars)")
+        return answer
 
     except Exception as e:
-        print(f"[LLM] Error calling Ollama: {e}")
+        log.error(f"Ollama error during generation: {e}")
         return SAFE_FAILURE_MESSAGE
 
-def self_rag_critic(query: str, draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
+def _extract_key_terms(text: str) -> set[str]:
+    """
+    Extract clinically meaningful terms from a sentence.
+    These are the terms we check against the source chunks.
+    """
+    terms = set()
 
-    context_block = build_context_block(verified_chunks)
+    # rsIDs: rs123456789
+    terms.update(re.findall(r'\brs\d+\b', text, re.IGNORECASE))
 
-    critic_prompt = f"""You are a clinical fact-checker.
+    # Gene names: BRCA1, TP53, MLH1 (2-6 uppercase letters + optional digit)
+    terms.update(re.findall(r'\b[A-Z]{2,6}\d?\b', text))
 
-Review this draft clinical answer and check: does EVERY factual claim have explicit support in the context below?
+    # ACMG criteria codes: PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4, BP1-7
+    terms.update(re.findall(r'\b(?:PVS|PS|PM|PP|BA|BS|BP)\d\b', text))
 
-DRAFT ANSWER: 
-{draft_answer}
+    # Key clinical classification words
+    clinical_words = {
+        "pathogenic", "likely pathogenic", "benign", "likely benign",
+        "uncertain significance", "vus", "pathogenicity", "classification",
+        "loss of function", "frameshift", "nonsense", "splice", "missense",
+        "hereditary", "breast", "ovarian", "cancer", "syndrome"
+    }
+    lower = text.lower()
+    for word in clinical_words:
+        if word in lower:
+            terms.add(word)
 
-{context_block}
+    # Numbers / percentages (allele frequency, etc.)
+    terms.update(re.findall(r'\b\d+\.?\d*%?\b', text))
 
-If ALL claims are supported → respond with exactly: VALID
-If ANY claim lacks support → rewrite the answer using only supported claims.
-Begin your rewrite immediately without any preamble."""
+    return terms
 
-    try:
-        response = ollama.chat(
-            model=settings.LOCAL_LLM_MODEL,
-            messages=[
-                {"role": "user", "content": critic_prompt}
-            ]
-        )
-        result = response.message.content.strip()
-        
-        if result.upper().startswith("VALID"):
-            return draft_answer
+
+def programmatic_critic(draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
+    """
+    Deterministic sentence-level critic — no LLM needed.
+
+    For each sentence in the draft:
+    - Extract its clinical key terms (rsIDs, gene names, ACMG codes, etc.)
+    - Check if any of those terms appear in the combined chunk corpus
+    - If yes → keep the sentence
+    - If no key terms at all → keep it (likely a connecting/intro sentence)
+    - If key terms exist but none match the corpus → drop the sentence
+
+    This replaces the LLM critic which was rewriting answers from training data.
+    """
+    # Build a single searchable corpus from all chunk texts
+    corpus = " ".join(c.text.lower() for c in verified_chunks)
+
+    sentences = re.split(r'(?<=[.!?])\s+', draft_answer.strip())
+    kept = []
+    dropped = []
+
+    for sentence in sentences:
+        if not sentence.strip():
+            continue
+
+        key_terms = _extract_key_terms(sentence)
+
+        if not key_terms:
+            # No clinical terms — likely a transition sentence, keep it
+            kept.append(sentence)
+            continue
+
+        # Check if at least one key term appears in the corpus
+        matched = any(term.lower() in corpus for term in key_terms)
+        if matched:
+            kept.append(sentence)
         else:
-            return result
+            dropped.append(sentence)
 
-    except Exception as e:
-        print(f"[Self-RAG] Critic error: {e}")
-        return draft_answer
+    if dropped:
+        log.info(f"Programmatic critic: kept {len(kept)}, dropped {len(dropped)} sentences")
+        for d in dropped:
+            log.info(f"  DROPPED: {d[:80]}")
+    else:
+        log.info("Programmatic critic: all sentences supported — no changes")
+
+    return " ".join(kept) if kept else draft_answer
+
+
+def self_rag_critic(query: str, draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
+    """Entry point for the critic — now uses the programmatic critic."""
+    log.info("Running programmatic critic (no LLM)...")
+    return programmatic_critic(draft_answer, verified_chunks)
+

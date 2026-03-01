@@ -6,9 +6,9 @@ INCORRECT = "incorrect"
 
 def grade_chunk(query: str, chunk: RetrievedChunk) -> str:
 
-    if chunk.score >= 3.0:
+    if chunk.score >= 2.0:       # high confidence — clearly relevant
         return CORRECT
-    elif chunk.score >= 0.0:
+    elif chunk.score >= -6.0:     # low confidence but not clearly irrelevant
         return AMBIGUOUS
     else: 
         return INCORRECT

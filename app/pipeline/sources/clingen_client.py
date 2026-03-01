@@ -2,7 +2,7 @@ import httpx
 from app.config import settings
 
 def get_gene_validity(gene_symbol: str) -> list[dict]:
-    url = f"{settings.CLINGEN_API_URL}/gene-validity"
+    url = f"https://clinicalgenome.org/api/gene-validity?gene={gene_symbol}&limit=10"
     params = {
         "search": gene_symbol,
         "limit": 10

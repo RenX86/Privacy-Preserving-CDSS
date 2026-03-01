@@ -6,7 +6,7 @@ def extract_citations(answer_text: str, used_chunks: list[RetrievedChunk]) -> li
     citations = []
     seen = set()
 
-    inline_pattern = re.compile(r'\[Source:\s*([^,\]]+),\s*([^\]]+)\]')
+    inline_pattern = re.compile(r'\[Source:\s*([^,\]]+),\s*(?:Reference:\s*)?([^\]]+)\]', re.IGNORECASE)
     for match in inline_pattern.finditer(answer_text):
         source = match.group(1).strip()
         reference = match.group(2).strip()

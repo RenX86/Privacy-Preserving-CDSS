@@ -1,12 +1,8 @@
-from sentence_transformers import SentenceTransformer
+from app.models.embeddings import embed_text
 from app.config import settings
 import psycopg2
 import psycopg2.extras
 
-_model = SentenceTransformer(settings.EMBEDDING_MODEL)
-
-def embed_text(text: str) -> list[float]:
-    return _model.encode(text).tolist()
 
 def search_documents(query_text: str, top_k: int = 5, source_filter: str = None, category_filter: str = None) -> list[dict]:
 

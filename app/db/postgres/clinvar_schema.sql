@@ -5,13 +5,13 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS variants (
     id                     SERIAL PRIMARY KEY,
     rsid                   VARCHAR(20) UNIQUE,
-    gene_symbol            VARCHAR(50),
+    gene_symbol            TEXT,
     chromosome             VARCHAR(10),
     position               BIGINT,
-    ref_allele             VARCHAR(255),
-    alt_allele             VARCHAR(255),
-    clinical_significance  VARCHAR(100),
-    review_status          VARCHAR(100),
+    ref_allele             TEXT,
+    alt_allele             TEXT,
+    clinical_significance  TEXT,
+    review_status          TEXT,
     condition              TEXT,
     last_evaluated         DATE,
     created_at             TIMESTAMP DEFAULT NOW()
