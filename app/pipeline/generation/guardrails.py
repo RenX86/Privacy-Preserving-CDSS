@@ -1,8 +1,8 @@
 from app.pipeline.retrieval.reranker import RetrievedChunk
 
 SAFE_FAILURE_MESSAGE = (
-    "Insufficient clinical data to safely provide a assessment. "
-    "Please consult primary clinical databses or a qualified clinician"
+    "Insufficient clinical data to safely provide an assessment. "
+    "Please consult primary clinical databases or a qualified clinician."
 )
 
 def build_system_prompt() -> str:
@@ -17,7 +17,7 @@ STRICT RULES — you must follow these without exception:
 6. Do not add disclaimers or padding — be direct and factual.
 """
 
-def build_user_prompt(chunks: list[RetrievedChunk]) -> str:
+def build_context_block(chunks: list[RetrievedChunk]) -> str:
 
     if not chunks:
         return "No verified clinical context available."

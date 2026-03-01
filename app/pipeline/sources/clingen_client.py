@@ -1,7 +1,7 @@
 import httpx
 from app.config import settings
 
-def get_gene_validity(get_symbol: str) -> list[dict]:
+def get_gene_validity(gene_symbol: str) -> list[dict]:
     url = f"{settings.CLINGEN_API_URL}/gene-validity"
     params = {
         "search": gene_symbol,
@@ -16,7 +16,7 @@ def get_gene_validity(get_symbol: str) -> list[dict]:
 
         return data.get("results", [])
     
-    except httpx.TimeoutExeption:
+    except httpx.TimeoutException:
 
         print(f"[Clingen] HTTP error for {gene_symbol}")
         return []
@@ -37,8 +37,7 @@ def extract_gene_from_query(query_text: str) -> str | None:
 
     known_genes = {
         "BRCA1", "BRCA2", "TP53", "EGFR", "ALK", "ROS1", "MET", "HER2", "PDGFRA", "KIT",
-        "BRAF", "KIT", "PDGFRA", "EGFR", "ALK", "ROS1", "MET", "HER2", "PDGFRA", "KIT",
-        "MSH6", "PMS2", "APC", "RB1", "VHL", "EGFR", "KRAS"
+        "BRAF", "MSH2", "MLH1", "MSH6", "PMS2", "APC", "RB1", "VHL", "KRAS", "PTEN"
     }
 
     matches = gene_pattern.findall(query_text)

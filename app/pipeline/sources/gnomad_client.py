@@ -1,6 +1,6 @@
 import httpx
 
-GENOMAD_API_URL = "https://gnomad.broadinstitute.org/api"
+GNOMAD_API_URL = "https://gnomad.broadinstitute.org/api"
 
 def get_allele_frequency(rsid: str) -> dict | None:
 
@@ -24,7 +24,7 @@ def get_allele_frequency(rsid: str) -> dict | None:
     """
     try:
         response = httpx.post(
-            GENOMAD_API_URL,
+            GNOMAD_API_URL,
             json={"query": query, "variables": {"variantId": rsid}},
             timeout=10.0
         )

@@ -13,7 +13,7 @@ def grade_chunk(query: str, chunk: RetrievedChunk) -> str:
     else: 
         return INCORRECT
 
-def evaluate(query: str, chunk: list[RetrievedChunk]) -> dict:
+def evaluate_chunks(query: str, chunks: list[RetrievedChunk]) -> dict:
 
     results = {
         CORRECT: [],

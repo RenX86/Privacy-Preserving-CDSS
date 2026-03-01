@@ -10,7 +10,7 @@ from app.pipeline.sources.clingen_client import get_gene_validity, extract_gene_
 
 #retrival and verification
 from app.pipeline.retrieval.reranker import (
-    rerank_chunks, from_postgres_result, from_vector_result, from_clingen_result
+    rerank_chunks, from_postgres_result, from_vector_result, from_clingen_result, RetrievedChunk
 )
 from app.pipeline.retrieval.crag_evaluator import evaluate_chunks, has_sufficient_context
 
