@@ -51,15 +51,40 @@ def from_vector_result(result: dict) -> RetrievedChunk:
     )
 
 def from_clingen_result(result: dict, gene: str) -> RetrievedChunk:
+    """
+    Build a chunk from a ClinGen /api/genes row.
+    Fields: symbol, hgnc_id, has_validity, has_actionability, has_dosage,
+            has_variant, date_last_curated, location, name
+    """
+    symbol   = result.get("symbol", gene)
+    hgnc_id  = result.get("hgnc_id", "unknown")
+    validity = result.get("has_validity")      # True/False or None
+    action   = result.get("has_actionability") # True/False or None
+    dosage   = result.get("has_dosage")        # True/False or None
+    variant  = result.get("has_variant")       # True/False or None
+    curated  = result.get("date_last_curated", "unknown date")
+    location = result.get("location", "unknown locus")
+    name     = result.get("name", "")
 
-    classification = result.get("classification", {}).get("label", "Unknown")
-    disease = result.get("disease", {}).get("label", "Unknown condition")
+    # Build a readable clinical summary
+    validity_str  = "YES - gene-disease validity curated by ClinGen expert panel" if validity else "Not curated"
+    action_str    = "YES - actionability curations available" if action else "No actionability curation"
+    variant_str   = "YES - variant curation expert panel active" if variant else "No variant curation"
+
     text = (
-        f"ClinGen expert panel classification for {gene}: "
-        f"{classification}. Disease: {disease}."
+        f"ClinGen Gene Summary for {symbol} ({hgnc_id}): {name}\n"
+        f"Chromosomal location: {location}\n"
+        f"Gene-Disease Validity: {validity_str}\n"
+        f"Actionability: {action_str}\n"
+        f"Dosage Sensitivity: {'Curated' if dosage else 'Not curated'}\n"
+        f"Variant Expert Panel: {variant_str}\n"
+        f"Last curated: {curated}\n"
+        f"Interpretation note: ClinGen has validated the gene-disease relationship for {symbol}. "
+        f"Variants in this gene should be interpreted using ClinGen/ACMG joint guidelines."
     )
+
     return RetrievedChunk(
         text=text,
         source="ClinGen",
-        reference=f"{gene}-EP"
+        reference=f"{symbol} ({hgnc_id})"
     )

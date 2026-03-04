@@ -44,7 +44,7 @@ def decompose_query(query: str) -> list[SubQuery]:
 
     if any(keyword in query_lower for keyword in ACMG_KEYWORDS):
         sub_queries.append(SubQuery(
-            text=f"Get ACMG guidelines for {query}",
+            text=query,           # raw query → multi-query expander generates targeted criteria queries
             target="vector_db",
             query_type="rule_retrieval"
         ))

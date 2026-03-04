@@ -77,7 +77,7 @@ def handle_query(request: QueryRequest):
                             reference=rsid
                         ))
                     else:
-                        print(f"  [WARN] gnomAD: no data for {rsid}")
+                        print(f"  [gnomAD] {rsid} absent from gnomAD r4 — BA1 rule does NOT apply (supports rare/pathogenic)")
                     trusted_chunks.append(from_postgres_result(result))
                 else:
                     print(f"  [WARN] ClinVar: {rsid} not found in local DB")

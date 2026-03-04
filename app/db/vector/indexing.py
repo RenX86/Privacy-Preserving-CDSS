@@ -123,7 +123,31 @@ def insert_chunk(conn, source, category, gene, child_text, parent_text, embeddin
     conn.commit()
 
 
-# ─── STEP 5: INDEX ONE DOCUMENT ───────────────────────────────────────────────
+# Patterns that identify preamble/metadata sections - these should NOT be indexed
+NOISE_PATTERNS = [
+    "Conflicts of Interest",
+    "Current address",
+    "Disclaimer",
+    "Acknowledgments",
+    "Correspondence to",
+    "No commercial conflict",
+    "The following workgroup",
+    "ARUP Institute",
+    "Elaine Lyon",
+    "Department of Pathology, ARUP",
+    "These ACMG Standards and Guidelines were developed",
+    "Adherence to these standards",
+    "Copyright",
+    "All rights reserved",
+]
+
+def is_noise_section(text: str) -> bool:
+    """Return True if this section is preamble/metadata -- should NOT be indexed."""
+    sample = text[:400]   # only check the opening to avoid false positives
+    return any(pattern.lower() in sample.lower() for pattern in NOISE_PATTERNS)
+
+
+# --- STEP 5: INDEX ONE DOCUMENT ---
 
 def index_document(filepath, source, category, gene=None):
     print(f"\n--- Reading: {os.path.basename(filepath)}")
@@ -137,7 +161,11 @@ def index_document(filepath, source, category, gene=None):
     total_children = 0
 
     try:
+        skipped = 0
         for parent in parent_sections:
+            if is_noise_section(parent):
+                skipped += 1
+                continue
             children = make_child_chunks(parent)
             for child in children:
                 embedding = embed_text(child)
@@ -146,7 +174,7 @@ def index_document(filepath, source, category, gene=None):
     finally:
         conn.close()
 
-    print(f"   [OK] {total_children} child chunks indexed")
+    print(f"   [OK] {total_children} child chunks indexed | {skipped} noise sections skipped")
 
 def discover_documents(docs_folder: str) -> list[dict]:
 

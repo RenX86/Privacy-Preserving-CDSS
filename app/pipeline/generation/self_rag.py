@@ -22,15 +22,17 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
 
     user_message = f"""{context_block}
 
-CLINICAL QUERY: {query}
+---
+ANSWER THE FOLLOWING CLINICAL QUERY. Start your answer immediately — do NOT repeat or echo the query, instructions, or section headers.
 
-INSTRUCTIONS — follow these steps in order:
-1. Look at VARIANT DATABASE FACTS: state the specific variant's classification, gene, and associated conditions directly from that section.
-2. Look at CLINICAL GUIDELINES: identify any criteria codes (PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4) or classification rules mentioned that are relevant to this variant type.
-3. Write a concise clinical answer that directly addresses the query.
+QUERY: {query}
+
+STEPS:
+1. State the specific variant classification and gene from VARIANT DATABASE FACTS.
+2. From CLINICAL GUIDELINES, identify criteria codes (PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4) or rules explicitly mentioned.
+3. If criteria not in the guidelines text, state: "Specific criteria not available in retrieved guidelines."
 4. Cite every claim: [Source: name, Reference: id].
-5. If a specific criterion is not mentioned in the CLINICAL GUIDELINES section, say "criteria details not available in retrieved guidelines" — do NOT invent criteria names.
-6. Do NOT summarize the entire guideline document. Answer ONLY what was asked."""
+5. Do NOT invent variant types (synonymous, missense, etc.) unless explicitly stated in the context above."""
 
     log.info(f"Calling Ollama [{settings.LOCAL_LLM_MODEL}] to generate answer ({len(verified_chunks)} verified chunks)")
     try:
@@ -42,6 +44,16 @@ INSTRUCTIONS — follow these steps in order:
             ]
         )
         answer = response.message.content
+
+        # Strip any leaked prompt preamble the LLM may have copied into the answer
+        for prefix in ["CLINICAL QUERY:", "QUERY:", "INSTRUCTIONS", "ANSWER THE FOLLOWING"]:
+            if answer.lstrip().startswith(prefix):
+                # Drop everything up to and including the first double newline after the preamble
+                after = answer.find("\n\n", answer.index(prefix))
+                if after != -1:
+                    answer = answer[after:].strip()
+                break
+
         log.info(f"Draft answer generated ({len(answer)} chars)")
         return answer
 
@@ -70,7 +82,9 @@ def _extract_key_terms(text: str) -> set[str]:
         "pathogenic", "likely pathogenic", "benign", "likely benign",
         "uncertain significance", "vus", "pathogenicity", "classification",
         "loss of function", "frameshift", "nonsense", "splice", "missense",
-        "hereditary", "breast", "ovarian", "cancer", "syndrome"
+        "synonymous", "deletion", "insertion", "duplication", "null variant",
+        "hereditary", "breast", "ovarian", "cancer", "syndrome",
+        "screening", "surveillance", "mastectomy", "prophylactic",
     }
     lower = text.lower()
     for word in clinical_words:
