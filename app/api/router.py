@@ -78,6 +78,15 @@ def handle_query(request: QueryRequest):
                         ))
                     else:
                         print(f"  [gnomAD] {rsid} absent from gnomAD r4 — BA1 rule does NOT apply (supports rare/pathogenic)")
+                        trusted_chunks.append(RetrievedChunk(
+                            text=(
+                                f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. "
+                                f"ACMG BA1 benign stand-alone rule does NOT apply. "
+                                f"Absence from population databases is consistent with a rare pathogenic variant."
+                            ),
+                            source="gnomAD",
+                            reference=rsid
+                        ))
                     trusted_chunks.append(from_postgres_result(result))
                 else:
                     print(f"  [WARN] ClinVar: {rsid} not found in local DB")
@@ -112,20 +121,42 @@ def handle_query(request: QueryRequest):
             else:
                 print(f"  [WARN] ClinGen: no gene detected — skipped")
 
-    print(f"\n[PHASE 3] trusted={len(trusted_chunks)} | candidates={len(candidate_chunks)}")
+    print(f"\n[PHASE 3] Collected trusted={len(trusted_chunks)} | PDF candidates={len(candidate_chunks)}")
+    if trusted_chunks:
+        print(f"\n[PHASE 3] TRUSTED CHUNK CONTENTS (sent directly to LLM):")
+        for i, c in enumerate(trusted_chunks, 1):
+            print(f"  [{i}] source={c.source} | ref={c.reference}")
+            print(f"       {c.text.replace(chr(10), ' ')[:300]}")
 
-    # ── PHASE 4: Rerank and CRAG-filter only the PDF candidates ───────────────
+    # ── PHASE 4: Dedup by parent_text, then Rerank and CRAG-filter PDF candidates
+    TOP_PDF_CHUNKS = 5   # maximum PDF sections sent to LLM — prevents context overload
     filtered_candidates = []
     if candidate_chunks:
-        ranked = rerank_chunks(query, candidate_chunks)
-        print(f"\n[PHASE 4] RE-RANKING PDF candidates (cross-encoder scores):")
+        # Deduplicate by parent_text — same section found by multiple child queries → keep once
+        seen_parents = set()
+        unique_candidates = []
+        for c in candidate_chunks:
+            key = c.text[:200]   # parent_text is already the text field (from from_vector_result)
+            if key not in seen_parents:
+                seen_parents.add(key)
+                unique_candidates.append(c)
+        removed = len(candidate_chunks) - len(unique_candidates)
+        print(f"\n[PHASE 4] Deduplication: {len(candidate_chunks)} raw → {len(unique_candidates)} unique (removed {removed} duplicate parent sections)")
+
+        ranked = rerank_chunks(query, unique_candidates)
+        print(f"\n[PHASE 4] RE-RANKING {len(ranked)} unique PDF candidates (cross-encoder scores):")
+        print(f"       {'score':>8}  source / parent_text preview (200 chars)")
         for c in ranked:
-            print(f"  score={c.score:.3f} | source={c.source} | text={c.text[:60]}...")
+            preview = c.text.replace('\n', ' ')[:200]
+            print(f"       {c.score:>8.3f}  [{c.source}] {preview}")
 
         evaluation = evaluate_chunks(query, ranked)
-        filtered_candidates = evaluation["correct"] + evaluation["ambiguous"]
+        all_passing = evaluation["correct"] + evaluation["ambiguous"]
+        # Cap at TOP_PDF_CHUNKS to avoid overwhelming the LLM with too many sections
+        filtered_candidates = all_passing[:TOP_PDF_CHUNKS]
         print(f"\n[PHASE 5] CRAG (PDF only): correct={len(evaluation['correct'])} | "
               f"ambiguous={len(evaluation['ambiguous'])} | incorrect={len(evaluation['incorrect'])}")
+        print(f"[PHASE 5] PDF cap: using top {len(filtered_candidates)} of {len(all_passing)} passing chunks")
     else:
         print("\n[PHASE 4] No PDF candidates to rank")
 
@@ -135,6 +166,14 @@ def handle_query(request: QueryRequest):
 
     print(f"\n[PHASE 5] FINAL CONTEXT: {len(trusted_chunks)} trusted DB + "
           f"{len(filtered_candidates)} filtered PDF = {len(verified)} total")
+    print(f"\n[PHASE 5] FULL CONTEXT BEING SENT TO LLM:")
+    print(f"       {'='*72}")
+    for i, c in enumerate(verified, 1):
+        print(f"  CHUNK [{i}/{len(verified)}] source={c.source} | ref={c.reference}")
+        # Print the full parent text (what actually goes to LLM)
+        for line in c.text.splitlines():
+            print(f"       {line}")
+        print(f"       {'-'*72}")
 
     if not verified:
         print("  [FAIL] No context — returning safe failure")
@@ -147,9 +186,20 @@ def handle_query(request: QueryRequest):
 
     print(f"\n[PHASE 6] GENERATION")
     draft = generate_answer(query, verified)
-    print(f"  Draft: {draft[:120]}...")
+    print(f"\n[PHASE 6] DRAFT ANSWER:")
+    print(f"       {'-'*72}")
+    for line in draft.splitlines():
+        print(f"       {line}")
+    print(f"       {'-'*72}")
     answer = self_rag_critic(query, draft, verified)
-    print(f"  Final: {answer[:120]}...")
+    if answer != draft:
+        print(f"\n[PHASE 6] CRITIC CHANGED ANSWER:")
+        print(f"       {'-'*72}")
+        for line in answer.splitlines():
+            print(f"       {line}")
+        print(f"       {'-'*72}")
+    else:
+        print("\n[PHASE 6] Critic: no changes — draft accepted")
 
     raw_citations = extract_citations(answer, verified)
     citations = [

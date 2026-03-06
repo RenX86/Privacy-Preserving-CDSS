@@ -27,14 +27,29 @@ def rerank_chunks(query: str, chunks: list[RetrievedChunk]) -> list[RetrievedChu
 
     return ranked
 
+def _clean_conditions(raw: str) -> str:
+    """Clean ClinVar pipe/semicolon-separated conditions into readable text."""
+    if not raw:
+        return "Not provided"
+    # Split on pipes and semicolons, deduplicate, remove empty
+    parts = [p.strip() for p in raw.replace("|", ";").split(";") if p.strip()]
+    seen = set()
+    unique = []
+    for p in parts:
+        key = p.lower()
+        if key not in seen and key != "not provided":
+            seen.add(key)
+            unique.append(p)
+    return "; ".join(unique) if unique else "Not provided"
+
 def from_postgres_result(result: dict) -> RetrievedChunk:
 
+    conditions = _clean_conditions(result.get('condition', ''))
     text = (
         f"Variant {result.get('rsid')} in gene {result.get('gene_symbol')} "
-        f"is classified as {result.get('clinical_significance')}. "
-        f"Condition: {result.get('condition')}"
-        f"Review Status: {result.get('review_status')} "
-
+        f"is classified as {result.get('clinical_significance')}.\n"
+        f"Condition: {conditions}.\n"
+        f"Review Status: {result.get('review_status')}."
     )
     return RetrievedChunk(
         text=text,

@@ -17,49 +17,44 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         log.warning("No verified chunks — returning safe failure message")
         return SAFE_FAILURE_MESSAGE
 
-    system_prompt = build_system_prompt()
+    # ── Build the context block using the shared function ─────────────────────
     context_block = build_context_block(verified_chunks)
 
-    user_message = f"""{context_block}
+    # ── Final user message: structured context → question ────────────────────
+    user_message = (
+        f"{context_block}\n\n"
+        f"Using ONLY the database facts and guidelines above, write a clinical summary answering:\n"
+        f"{query}\n\n"
+        f"CRITICAL RULES:\n"
+        f"1. The VARIANT DATABASE FACTS above are verified. Report their classifications EXACTLY as stated — do NOT change Pathogenic to uncertain or VUS.\n"
+        f"2. Cite every fact with [Source: name, Reference: id].\n"
+        f"3. Do not add information not present in the context above.\n"
+        f"4. Do not invent patient demographics (age, sex) unless stated in the query.\n"
+        f"5. Do not suggest external resources."
+    )
 
----
-ANSWER THE FOLLOWING CLINICAL QUERY. Start your answer immediately — do NOT repeat or echo the query, instructions, or section headers.
+    DB_SOURCES = {"Clinvar", "gnomAD", "ClinGen"}
+    db_count = sum(1 for c in verified_chunks if c.source in DB_SOURCES)
+    pdf_count = len(verified_chunks) - db_count
 
-QUERY: {query}
-
-STEPS:
-1. State the specific variant classification and gene from VARIANT DATABASE FACTS.
-2. From CLINICAL GUIDELINES, identify criteria codes (PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4) or rules explicitly mentioned.
-3. If criteria not in the guidelines text, state: "Specific criteria not available in retrieved guidelines."
-4. Cite every claim: [Source: name, Reference: id].
-5. Do NOT invent variant types (synonymous, missense, etc.) unless explicitly stated in the context above."""
-
-    log.info(f"Calling Ollama [{settings.LOCAL_LLM_MODEL}] to generate answer ({len(verified_chunks)} verified chunks)")
+    log.info(f"Calling Ollama [{settings.LOCAL_LLM_MODEL}] "
+             f"({db_count} DB + {pdf_count} PDF chunks)")
     try:
         response = ollama.chat(
             model=settings.LOCAL_LLM_MODEL,
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
+                {"role": "system", "content": build_system_prompt()},
+                {"role": "user",   "content": user_message}
             ]
         )
         answer = response.message.content
-
-        # Strip any leaked prompt preamble the LLM may have copied into the answer
-        for prefix in ["CLINICAL QUERY:", "QUERY:", "INSTRUCTIONS", "ANSWER THE FOLLOWING"]:
-            if answer.lstrip().startswith(prefix):
-                # Drop everything up to and including the first double newline after the preamble
-                after = answer.find("\n\n", answer.index(prefix))
-                if after != -1:
-                    answer = answer[after:].strip()
-                break
-
         log.info(f"Draft answer generated ({len(answer)} chars)")
         return answer
 
     except Exception as e:
         log.error(f"Ollama error during generation: {e}")
         return SAFE_FAILURE_MESSAGE
+
 
 def _extract_key_terms(text: str) -> set[str]:
     """
@@ -97,19 +92,45 @@ def _extract_key_terms(text: str) -> set[str]:
     return terms
 
 
+# ── Classification terms grouped by meaning ──────────────────────────────────
+_PATHOGENIC_TERMS   = {"pathogenic", "likely pathogenic"}
+_BENIGN_TERMS       = {"benign", "likely benign"}
+_UNCERTAIN_TERMS    = {"uncertain significance", "vus", "uncertain"}
+
+def _get_db_classifications(db_chunks: list[RetrievedChunk]) -> dict[str, str]:
+    """
+    Extract the actual classification stated for each rsID in the DB chunks.
+    Returns e.g. {"rs879254116": "pathogenic"}
+    """
+    classifications = {}
+    for chunk in db_chunks:
+        rsids = re.findall(r'\brs\d+\b', chunk.text, re.IGNORECASE)
+        text_lower = chunk.text.lower()
+        for rsid in rsids:
+            if "pathogenic" in text_lower:
+                classifications[rsid.lower()] = "pathogenic"
+            elif "benign" in text_lower:
+                classifications[rsid.lower()] = "benign"
+            elif "uncertain" in text_lower or "vus" in text_lower:
+                classifications[rsid.lower()] = "uncertain"
+    return classifications
+
+
 def programmatic_critic(draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
     """
     Deterministic sentence-level critic — no LLM needed.
 
-    For each sentence in the draft:
-    - Extract its clinical key terms (rsIDs, gene names, ACMG codes, etc.)
-    - Check if any of those terms appear in the combined chunk corpus
-    - If yes → keep the sentence
-    - If no key terms at all → keep it (likely a connecting/intro sentence)
-    - If key terms exist but none match the corpus → drop the sentence
-
-    This replaces the LLM critic which was rewriting answers from training data.
+    Two-pass check:
+    1. Factual contradiction check: If a sentence says "uncertain/VUS" but the DB
+       says "Pathogenic", drop or correct it. This catches the main hallucination.
+    2. Key-term grounding check: For each sentence, check that at least one
+       clinical key term appears in the combined chunk corpus. If key terms exist
+       but none match → drop the sentence (likely hallucinated).
     """
+    DB_SOURCES = {"Clinvar", "gnomAD", "ClinGen"}
+    db_chunks = [c for c in verified_chunks if c.source in DB_SOURCES]
+    db_classifications = _get_db_classifications(db_chunks)
+
     # Build a single searchable corpus from all chunk texts
     corpus = " ".join(c.text.lower() for c in verified_chunks)
 
@@ -121,26 +142,61 @@ def programmatic_critic(draft_answer: str, verified_chunks: list[RetrievedChunk]
         if not sentence.strip():
             continue
 
+        sentence_lower = sentence.lower()
+
+        # ── Pass 1: Factual contradiction check ──────────────────────────────
+        # If the sentence mentions a specific rsID that we have DB data for,
+        # check whether it contradicts the known classification
+        contradiction = False
+        for rsid, db_class in db_classifications.items():
+            if rsid in sentence_lower:
+                # DB says pathogenic, but sentence says uncertain/VUS
+                if db_class in ("pathogenic", "likely pathogenic"):
+                    if any(t in sentence_lower for t in ("uncertain", "vus", "not specified", "not found", "unable to find")):
+                        log.info(f"  DROP (contradicts DB: {rsid} is {db_class} but sentence says uncertain): {sentence[:80]}")
+                        dropped.append(sentence)
+                        contradiction = True
+                        break
+                # DB says benign, but sentence says pathogenic
+                elif db_class in ("benign", "likely benign"):
+                    if "pathogenic" in sentence_lower and "benign" not in sentence_lower:
+                        log.info(f"  DROP (contradicts DB: {rsid} is {db_class} but sentence says pathogenic): {sentence[:80]}")
+                        dropped.append(sentence)
+                        contradiction = True
+                        break
+
+        if contradiction:
+            continue
+
+        # ── Pass 1b: Drop hallucinated patient demographics ──────────────────
+        # If the sentence invents patient age/sex not present in any chunk
+        age_pattern = re.search(r'\b\d{1,3}-year-old\b', sentence_lower)
+        if age_pattern and age_pattern.group() not in corpus:
+            log.info(f"  DROP (hallucinated demographics): {sentence[:80]}")
+            dropped.append(sentence)
+            continue
+
+        # ── Pass 2: Key-term grounding check ─────────────────────────────────
         key_terms = _extract_key_terms(sentence)
 
         if not key_terms:
-            # No clinical terms — likely a transition sentence, keep it
             kept.append(sentence)
+            log.info(f"  KEEP (no clinical terms — transition sentence): {sentence[:80]}")
             continue
 
         # Check if at least one key term appears in the corpus
-        matched = any(term.lower() in corpus for term in key_terms)
-        if matched:
+        matched_terms = [t for t in key_terms if t.lower() in corpus]
+        if matched_terms:
             kept.append(sentence)
+            log.info(f"  KEEP (terms matched: {list(matched_terms)[:3]}): {sentence[:80]}")
         else:
             dropped.append(sentence)
+            log.info(f"  DROP (no corpus match for terms {list(key_terms)[:5]}): {sentence[:80]}")
 
     if dropped:
-        log.info(f"Programmatic critic: kept {len(kept)}, dropped {len(dropped)} sentences")
-        for d in dropped:
-            log.info(f"  DROPPED: {d[:80]}")
+        log.info(f"Critic result: kept {len(kept)} / dropped {len(dropped)} sentences")
     else:
-        log.info("Programmatic critic: all sentences supported — no changes")
+        log.info(f"Critic result: all {len(kept)} sentences supported — no changes")
 
     return " ".join(kept) if kept else draft_answer
 
@@ -149,4 +205,3 @@ def self_rag_critic(query: str, draft_answer: str, verified_chunks: list[Retriev
     """Entry point for the critic — now uses the programmatic critic."""
     log.info("Running programmatic critic (no LLM)...")
     return programmatic_critic(draft_answer, verified_chunks)
-

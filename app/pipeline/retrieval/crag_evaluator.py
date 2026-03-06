@@ -21,9 +21,17 @@ def evaluate_chunks(query: str, chunks: list[RetrievedChunk]) -> dict:
         INCORRECT: []
     }
 
+    print(f"\n[CRAG] Grading {len(chunks)} PDF chunks:")
+    print(f"       Thresholds: CORRECT >= 2.0 | AMBIGUOUS >= -6.0 | INCORRECT < -6.0")
+    print(f"       {'score':>8}  {'grade':>12}  source / text preview")
+    print(f"       {'-'*70}")
+
     for chunk in chunks:
         grade = grade_chunk(query, chunk)
         results[grade].append(chunk)
+        grade_symbol = "[CORRECT]" if grade == CORRECT else ("[AMBIGUOUS]" if grade == AMBIGUOUS else "[INCORRECT]")
+        preview = chunk.text.replace("\n", " ")[:120]
+        print(f"       {chunk.score:>8.3f}  {grade_symbol:>12}  [{chunk.source}] {preview}")
 
     return results
 
