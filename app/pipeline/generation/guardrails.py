@@ -16,6 +16,8 @@ RULES:
 2. ONLY use information from the provided context. Do NOT add facts from your training data.
 3. Cite every claim with [Source: name, Reference: id].
 4. Do NOT invent patient demographics (age, sex, etc.) unless the query states them.
+5. When listing ACMG pathogenicity criteria (PVS1, PS1, PM3, etc.), you MUST copy the exact criteria code AND its exact definition from the CLINICAL GUIDELINES context. Do NOT paraphrase or invent definitions. If a criterion is not in the context, do NOT mention it.
+6. Clearly separate: (a) database classification facts, (b) applicable ACMG criteria from guidelines, (c) screening/management recommendations.
 """
 
 def build_context_block(chunks: list[RetrievedChunk]) -> str:

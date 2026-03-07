@@ -50,6 +50,11 @@ SECTION_HEADER = re.compile(
     r'|Table\s+\d+'                  # Table 1, Table 2
     r'|Figure\s+\d+'                 # Figure 1
     r'|Appendix'                     # Appendix sections
+    r'|MS-\d+'                       # NCCN page markers (MS-1, MS-22)
+    r'|Genetic/Familial'             # NCCN hereditary sections
+    r'|Risk Reduction'               # NCCN risk management
+    r'|Screening'                    # NCCN screening sections
+    r'|Surveillance'                 # NCCN surveillance sections
     r'))',
     re.MULTILINE
 )
@@ -90,7 +95,7 @@ def semantic_split(text: str, target_sections: int = 30) -> list[str]:
 
 # ─── STEP 3: SMALL-TO-BIG CHUNKING ───────────────────────────────────────────
 
-def make_child_chunks(parent_text: str, max_chars: int = 200) -> list[str]:
+def make_child_chunks(parent_text: str, max_chars: int = 500) -> list[str]:
     
     sentences = re.split(r'(?<=[.!?])\s+', parent_text)
     children  = []
@@ -107,7 +112,7 @@ def make_child_chunks(parent_text: str, max_chars: int = 200) -> list[str]:
     if current.strip():
         children.append(current.strip())
 
-    return [c for c in children if len(c) > 40]
+    return [c for c in children if len(c) > 80]
 
 
 # ─── STEP 4: DATABASE INSERT ──────────────────────────────────────────────────
@@ -135,10 +140,28 @@ NOISE_PATTERNS = [
     "ARUP Institute",
     "Elaine Lyon",
     "Department of Pathology, ARUP",
-    "These ACMG Standards and Guidelines were developed",
-    "Adherence to these standards",
+
+    "Disclaimer",
+    "Acknowledgments",
     "Copyright",
     "All rights reserved",
+    "These ACMG Standards and Guidelines were developed",
+    "Adherence to these standards",
+    "does not necessarily assure",
+    "should not be considered inclusive",
+
+    "Received:", 
+    "Accepted:",
+    "Published online",
+    "doi:",
+    "ISSN",
+    "Volume",
+
+    "NCCN Guidelines Version",
+    "Guidelines Index",
+    "Table of Contents",
+    "Discussion",
+    "UPDATES",
 ]
 
 def is_noise_section(text: str) -> bool:
@@ -146,6 +169,9 @@ def is_noise_section(text: str) -> bool:
     sample = text[:400]   # only check the opening to avoid false positives
     return any(pattern.lower() in sample.lower() for pattern in NOISE_PATTERNS)
 
+def is_bibliography_section(text: str) -> bool:
+
+    return bool(re.match(r'^\s*\d{1,3}\.\s+[A-Z][a-z]+\s+[A-Z]{1,2}[,\s]', text))
 
 # --- STEP 5: INDEX ONE DOCUMENT ---
 
@@ -164,6 +190,9 @@ def index_document(filepath, source, category, gene=None):
         skipped = 0
         for parent in parent_sections:
             if is_noise_section(parent):
+                skipped += 1
+                continue
+            if is_bibliography_section(parent):
                 skipped += 1
                 continue
             children = make_child_chunks(parent)

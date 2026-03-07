@@ -2,6 +2,7 @@ import re
 import logging
 import ollama
 from app.config import settings
+from app.pipeline.generation.citation_enforcer import fix_hallucinated_citations
 
 log = logging.getLogger("cdss.self_rag")
 from app.pipeline.generation.guardrails import (
@@ -49,6 +50,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         )
         answer = response.message.content
         log.info(f"Draft answer generated ({len(answer)} chars)")
+        answer = fix_hallucinated_citations(answer, verified_chunks)
         return answer
 
     except Exception as e:
@@ -175,6 +177,20 @@ def programmatic_critic(draft_answer: str, verified_chunks: list[RetrievedChunk]
             log.info(f"  DROP (hallucinated demographics): {sentence[:80]}")
             dropped.append(sentence)
             continue
+
+        # Pass 1c: Drop hallucinated ACMG criteria definitions
+        acmg_def_match = re.search(r'\b(PVS1|PS[1-4]|PM[1-6]|PP[1-5]|BA1|BS[1-4]|BP[1-7])\s*[:\-–]\s*(.{10,80})', sentence)
+
+        if acmg_def_match:
+            code = acmg_def_match.group(1)
+            given_def = acmg_def_match.group(2).strip().lower()
+
+            guide_corpus = " ".join(c.text.lower() for c in verified_chunks if c.source not in DB_SOURCES)
+
+            if code.lower() in guide_corpus and given_def[:30] not in guide_corpus:
+                log.info(f"  DROP (ACMG criteria {code} definition not found in guidelines): {sentence[:80]}")
+                dropped.append(sentence)
+                continue
 
         # ── Pass 2: Key-term grounding check ─────────────────────────────────
         key_terms = _extract_key_terms(sentence)
