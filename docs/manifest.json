@@ -1,10 +1,14 @@
 {
-  "AMCG_2015_v3.pdf": {
+  "ACMG_2015_v3.pdf": {
     "source": "ACMG_2015",
-    "gene": null
+    "category": "guideline",
+    "gene": null,
+    "parser": "pymupdf"
   },
   "NCCN_Breast Cancer_ver_2_2026.pdf": {
     "source": "NCCN_Breast_v2_2026",
-    "gene": "BRCA1"
+    "category": "protocol",
+    "gene": "BRCA1",
+    "parser": "docling"
   }
 }
