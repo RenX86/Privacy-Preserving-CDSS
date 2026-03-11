@@ -9,7 +9,7 @@ def expand_queries(original_query: str, n: int = 3, query_type: str = "general")
     Generate targeted clinical sub-queries to retrieve specific guideline sections.
     Focuses on extracting ACMG criteria codes and classification rules.
     """
-    if query_type == "protocol_retrieval":
+    if query_type in ["protocol_retrieval", "screening_retrieval"]:
         prompt = f"""You are a clinical guidelines search assistant.
         Generate {n} short, specific search queries to retrieve clinical management and screening sections.
         Focus on: screening protocols, surveillance schedules, risk-reducing surgery,
@@ -71,7 +71,7 @@ def multi_query_search(
     3. Deduplicate results by chunk text (same chunk found multiple times = keep once)
     4. Return the full unique pool — let the reranker pick the best ones
     """
-    queries = expand_queries(query, n=n_variants, query_type="protocol_retrieval" if category_filter == "protocol" else "rule_retrieval")
+    queries = expand_queries(query, n=n_variants, query_type="protocol_retrieval" if category_filter in ["protocol", "screening_protocol"] else "rule_retrieval")
 
     seen_texts = set()
     unique_results = []

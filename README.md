@@ -78,9 +78,12 @@ Clinician Query
                    └─────────────────────────────────────────────────┘
                                         │
                                         ▼
+                                        │
+                                        ▼
                    ┌──────────────────────────────────────────────────┐
                    │           Phase 5 — Retrieval & Verification      │
                    │                                                    │
+                   │  LangGraph State Machine Orchestration            │
                    │  Cross-Encoder Re-Ranking                         │
                    │  CRAG Evaluator (Correct / Ambiguous / Incorrect) │
                    │  Fallback loop → re-query if ambiguous/incorrect  │
@@ -125,8 +128,9 @@ An incoming clinical question is decomposed into typed sub-queries, each targeti
 | Sub-Query | Type | Destination |
 |---|---|---|
 | **Sub-Query 1** | Data Extraction | Detect `rs28897696` → route to PostgreSQL for ClinVar facts |
-| **Sub-Query 2** | Rule Retrieval | Fetch ACMG criteria for pathogenic BRCA1 mutation → Vector DB |
-| **Sub-Query 3** | Protocol Retrieval | Fetch NCCN protocols for breast cancer + BRCA1 → Vector DB |
+| **Sub-Query 2** | Rule Retrieval | Fetch ACMG criteria for pathogenic BRCA1 mutation → Vector DB (Guidelines) |
+| **Sub-Query 3** | Protocol Retrieval | Fetch NCCN protocols for breast cancer + BRCA1 → Vector DB (Protocols) |
+| **Sub-Query 4** | Screening Retrieval | Fetch high-risk surveillance for BRCA1 → Vector DB (Screening) |
 
 ---
 
@@ -208,10 +212,10 @@ Stores structured variant records. Queried via the SQL command constructed in Ph
 
 #### 🔮 Vector Database — Medical Protocols (Local)
 
-Stores chunked and embedded ACMG guidelines and NCCN protocols. Indexed using:
+Stores chunked and embedded ACMG guidelines, NCCN protocols, and NCCN screening surveillance guidelines. Indexed using:
 
-- **Chunking:** Semantic splitter preserving full rule definitions within each chunk
-- **Indexing:** Small-to-Big (Parent Document Retriever) pattern — search child chunks, retrieve parent documents for full clinical context
+- **Source Separation:** Documents are grouped into three distinct namespaces: `guideline`, `protocol`, and `screening_protocol`.
+- **Chunking:** Semantic / Markdown Header splitters preserving full rule definitions within each chunk
 - **Embeddings:** Domain-specific models — PubMedBERT, ClinicalBERT, MedEIR
 
 #### 🌐 ClinGen REST API — Expert Panels (Live External)
@@ -306,9 +310,9 @@ NCCN recommendation: Annual breast MRI + mammography from age 25. [Source: NCCN,
 | **Local LLM** | Ollama / vLLM (self-hosted) |
 | **Embeddings** | PubMedBERT · ClinicalBERT · MedEIR |
 | **Re-Ranking** | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
-| **RAG Framework** | LangChain / LlamaIndex |
+| **RAG Framework** | LangGraph / LangChain |
 | **Live External API** | ClinGen REST API (Expert Panels) |
-| **Local Data Sources** | ClinVar (PostgreSQL) · ACMG Guidelines · NCCN Protocols (Vector DB) |
+| **Local Data Sources** | ClinVar (PostgreSQL) · ACMG Guidelines · NCCN Protocols · NCCN Screening (Vector DB) |
 
 ---
 
@@ -322,6 +326,10 @@ cdss/
 │   └── schemas.py                 # Request/response models
 ├── pipeline/
 │   ├── decomposition.py           # Query decomposition
+│   ├── graph/                     # LangGraph State Machine
+│   │   ├── nodes.py               # Graph nodes
+│   │   ├── state.py               # Graph state definition
+│   │   └── workflow.py            # Graph compilation
 │   ├── construction/
 │   │   ├── text_to_sql.py         # SQL query builder (PostgreSQL path)
 │   │   └── self_query.py          # Self-Query Retriever (Vector DB path)
@@ -433,18 +441,18 @@ curl -X POST http://localhost:5656/query \
 
 - [x] System architecture design (Hybrid RAG)
 - [x] Project work plan & phase definitions
-- [ ] Phase 1 — PostgreSQL schema + ClinVar data ingestion
-- [ ] Phase 1 — Vector DB setup + ACMG/NCCN document indexing
-- [ ] Phase 2 — Layer 1 Regex routing (FastAPI)
-- [ ] Phase 2 — Layer 2 LLM logical router (PostgreSQL / Vector DB / ClinGen)
-- [ ] Phase 3 — Text-to-SQL constructor
-- [ ] Phase 3 — Self-Query Retriever with metadata filters
+- [x] Phase 1 — PostgreSQL schema + ClinVar data ingestion
+- [x] Phase 1 — Vector DB setup + ACMG/NCCN document indexing (PyMuPDF4LLM & Docling)
+- [x] Phase 2 — Layer 1 Regex routing (FastAPI)
+- [x] Phase 2 — Layer 2 LLM logical router (LangGraph orchestration)
+- [x] Phase 3 — Text-to-SQL constructor
+- [x] Phase 3 — Multi-Query Retriever with contextual metadata filters
 - [ ] Phase 4 — ClinGen REST API client with privacy-safe call pattern
-- [ ] Phase 5 — Cross-encoder re-ranker (all sources unified)
-- [ ] Phase 5 — CRAG evaluator agent + fallback loop
-- [ ] Phase 6 — Strict system prompt + safe-failure message
-- [ ] Phase 6 — Self-RAG internal critic
-- [ ] Phase 6 — Citation enforcer (ClinGen, ClinVar, ACMG, NCCN)
+- [x] Phase 5 — Cross-encoder re-ranker (all sources unified)
+- [x] Phase 5 — CRAG evaluator agent + Context limit caps
+- [x] Phase 6 — Strict system prompt + Pydantic structured output
+- [x] Phase 6 — Self-RAG internal LLM-based critic
+- [x] Phase 6 — Citation enforcer (ClinVar, ACMG, NCCN)
 - [ ] End-to-end integration testing
 - [ ] Clinical validation with domain experts
 - [ ] User Acceptance Testing (UAT)

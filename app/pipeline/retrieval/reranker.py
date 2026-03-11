@@ -59,10 +59,27 @@ def from_postgres_result(result: dict) -> RetrievedChunk:
 
 def from_vector_result(result: dict) -> RetrievedChunk:
     text = result.get("parent_text") or result.get("chunk_text", "")
+    
+    metadata = result.get("metadata", {})
+    reference = None
+    if isinstance(metadata, dict):
+        for i in range(6, 0, -1):
+            key = f"Header_{i}"
+            if key in metadata:
+                reference = metadata[key].replace("\n", " ").strip()
+                if len(reference) > 60:
+                    reference = reference[:57] + "..."
+                break
+        if not reference and "page" in metadata:
+            reference = f"page {metadata['page']}"
+                
+    if not reference:
+        reference = result.get("source", "unknown")
+        
     return RetrievedChunk(
         text=text,
         source=result.get("source", "VectorDB"),
-        reference=result.get("source", "unknown")
+        reference=reference
     )
 
 def from_clingen_result(result: dict, gene: str) -> RetrievedChunk:

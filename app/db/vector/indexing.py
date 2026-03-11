@@ -167,14 +167,14 @@ def is_bibliography_section(text: str) -> bool:
 
 # ─── STEP 4: DATABASE INSERTION ───────────────────────────────────────────────
 
-def insert_chunk(conn, source, category, gene, chunk_text, parent_context, embedding):
+def insert_chunk(conn, source, category, gene, chunk_text, metadata, parent_context, embedding):
     sql = """
         INSERT INTO medical_documents
-            (source, category, gene, chunk_text, parent_text, embedding)
-        VALUES (%s, %s, %s, %s, %s, %s::vector);
+            (source, category, gene, chunk_text, metadata, parent_text, embedding)
+        VALUES (%s, %s, %s, %s, %s, %s, %s::vector);
     """
     with conn.cursor() as cur:
-        cur.execute(sql, (source, category, gene, chunk_text, parent_context, embedding))
+        cur.execute(sql, (source, category, gene, chunk_text, json.dumps(metadata), parent_context, embedding))
     conn.commit()
 
 
@@ -225,7 +225,7 @@ def index_document(filepath, source, category, gene=None, parser="pymupdf"):
             for child in children:
                 enriched_child = f"[{metadata_str}]\n{child}" if metadata_str else child
                 embedding = embed_text(enriched_child)
-                insert_chunk(conn, source, category, gene, enriched_child, parent_context, embedding)
+                insert_chunk(conn, source, category, gene, enriched_child, metadata, parent_context, embedding)
                 total_children += 1
 
     finally:
@@ -246,7 +246,7 @@ def discover_documents(docs_folder: str) -> list[dict]:
         print("[WARN] No manifest.json found -- defaulting all files to pymupdf parser")
 
     documents = []
-    category_map = {"guidelines": "guideline", "protocols": "protocol"}
+    category_map = {"guidelines": "guideline", "protocols": "protocol", "screening": "screening_protocol"}
 
     for subfolder, category in category_map.items():
         folder_path = os.path.join(docs_folder, subfolder)

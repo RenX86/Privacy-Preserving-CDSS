@@ -19,9 +19,9 @@ ACMG_KEYWORDS = ["acmg", "pathogenic", "likely_pathogenic", "vus",
                  "uncertain_significance", "benign", "likely_benign", "variant classification", "pvs1",
                  "ps1", "pm2", "pp2", "bp2", "bs2", "bp4", "bs4", "criteria"]
 
-NCCN_KEYWORDS = ["nccn", "protocol", "screening", "surveillance", "chemotherapy",
-                 "radiotherapy", "surgery", "targeted therapy", "biological therapy", "immunotherapy", 
-                 "treatment guideline", "oncology", "cancer", "tumor", "mutation", "mutation testing"]
+PROTOCOL_KEYWORDS = ["protocol", "chemotherapy", "radiotherapy", "surgery", "targeted therapy", "biological therapy", "immunotherapy", "treatment", "oncology", "cancer", "tumor", "metastatic", "stage", "management"]
+
+SCREENING_KEYWORDS = ["nccn", "screening", "surveillance", "high-risk", "prevention", "early detection", "mammography", "mri", "prophylaxis", "prophylactic"]
 
 CLINGEN_KEYWORDS = ["clinvar", "clinvar variant", "clinvar variant id", "clinvar variant name",
                      "clinvar variant description", "clinvar variant classification",
@@ -49,11 +49,18 @@ def decompose_query(query: str) -> list[SubQuery]:
             query_type="rule_retrieval"
         ))
 
-    if any(keyword in query_lower for keyword in NCCN_KEYWORDS):
+    if any(keyword in query_lower for keyword in PROTOCOL_KEYWORDS):
         sub_queries.append(SubQuery(
             text=query,
             target="vector_db",
             query_type="protocol_retrieval"
+        ))
+
+    if any(keyword in query_lower for keyword in SCREENING_KEYWORDS):
+        sub_queries.append(SubQuery(
+            text=query,
+            target="vector_db",
+            query_type="screening_retrieval"
         ))
 
     if any(keyword in query_lower for keyword in CLINGEN_KEYWORDS):

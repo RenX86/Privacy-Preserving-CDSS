@@ -5,10 +5,16 @@
     "gene": null,
     "parser": "pymupdf"
   },
-  "NCCN_Breast Cancer_ver_2_2026.pdf": {
+  "Breast.pdf": {
     "source": "NCCN_Breast_v2_2026",
     "category": "protocol",
-    "gene": "BRCA1",
+    "gene": null,
+    "parser": "docling"
+  },
+  "Genetic-Familial High-Risk Assessment Breast Ovarian PancreaticandProstate.pdf": {
+    "source": "Genetic-Familial High-Risk Assessment",
+    "category": "screening",
+    "gene": null,
     "parser": "docling"
   }
 }

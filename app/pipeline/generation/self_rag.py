@@ -1,10 +1,21 @@
 import re
+import json
 import logging
 import ollama
+from pydantic import BaseModel, Field
 from app.config import settings
 from app.pipeline.generation.citation_enforcer import fix_hallucinated_citations
 
 log = logging.getLogger("cdss.self_rag")
+
+class ClinicalClaim(BaseModel):
+    text: str = Field(description="The clinical text or rule.")
+    citations: list[str] = Field(description="List of exact metadata citations used to support this text, formatted as '[Source: X, Reference: Y]'. MUST NOT BE EMPTY.")
+
+class ClinicalResponse(BaseModel):
+    summary: ClinicalClaim = Field(description="The main clinical summary answering the query.")
+    acmg_rules: list[ClinicalClaim] = Field(description="The explicitly stated ACMG rules applied to the variant.")
+    screening_protocol: list[ClinicalClaim] = Field(description="The cancer screening protocol derived from NCCN guidelines, including ages.")
 from app.pipeline.generation.guardrails import (
     build_system_prompt,
     build_context_block,
@@ -28,7 +39,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         f"{query}\n\n"
         f"CRITICAL RULES:\n"
         f"1. The VARIANT DATABASE FACTS above are verified. Report their classifications EXACTLY as stated — do NOT change Pathogenic to uncertain or VUS.\n"
-        f"2. Cite every fact with [Source: name, Reference: id].\n"
+        f"2. Every claim MUST include the exact `[Source: X, Reference: Y]` strings in its citations array.\n"
         f"3. Do not add information not present in the context above.\n"
         f"4. Do not invent patient demographics (age, sex) unless stated in the query.\n"
         f"5. Do not suggest external resources."
@@ -46,11 +57,45 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
             messages=[
                 {"role": "system", "content": build_system_prompt()},
                 {"role": "user",   "content": user_message}
-            ]
+            ],
+            format=ClinicalResponse.model_json_schema()
         )
-        answer = response.message.content
-        log.info(f"Draft answer generated ({len(answer)} chars)")
+        raw_json = response.message.content
+        log.info(f"Draft JSON generated ({len(raw_json)} chars)")
+        print(f"\n--- RAW JSON ---\n{raw_json}\n----------------\n")
+        try:
+            data = json.loads(raw_json)
+            lines = []
+            
+            if "summary" in data and data["summary"]:
+                summary_data = data["summary"]
+                text = summary_data.get("text", "")
+                cites = " ".join(summary_data.get("citations", []))
+                lines.append(f"**Clinical Summary**\n{text} {cites}\n")
+                
+            if "acmg_rules" in data and data["acmg_rules"]:
+                lines.append("**ACMG Pathogenicity Criteria**")
+                for rule in data["acmg_rules"]:
+                    text = rule.get("text", "")
+                    cites = " ".join(rule.get("citations", []))
+                    lines.append(f"* {text} {cites}")
+                lines.append("")
+                
+            if "screening_protocol" in data and data["screening_protocol"]:
+                lines.append("**Cancer Screening Protocol**")
+                for prot in data["screening_protocol"]:
+                    text = prot.get("text", "")
+                    cites = " ".join(prot.get("citations", []))
+                    lines.append(f"* {text} {cites}")
+            
+            answer = "\n".join(lines).strip()
+        except json.JSONDecodeError:
+            log.warning("Failed to decode JSON from Ollama. Falling back to raw response.")
+            answer = raw_json
+
+        print(f"\n--- PRE-ENFORCER ANSWER ---\n{answer}\n----------------\n")
         answer = fix_hallucinated_citations(answer, verified_chunks)
+        print(f"\n--- POST-ENFORCER ANSWER ---\n{answer}\n----------------\n")
         return answer
 
     except Exception as e:
@@ -58,166 +103,45 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         return SAFE_FAILURE_MESSAGE
 
 
-def _extract_key_terms(text: str) -> set[str]:
-    """
-    Extract clinically meaningful terms from a sentence.
-    These are the terms we check against the source chunks.
-    """
-    terms = set()
-
-    # rsIDs: rs123456789
-    terms.update(re.findall(r'\brs\d+\b', text, re.IGNORECASE))
-
-    # Gene names: BRCA1, TP53, MLH1 (2-6 uppercase letters + optional digit)
-    terms.update(re.findall(r'\b[A-Z]{2,6}\d?\b', text))
-
-    # ACMG criteria codes: PVS1, PS1-4, PM1-6, PP1-5, BA1, BS1-4, BP1-7
-    terms.update(re.findall(r'\b(?:PVS|PS|PM|PP|BA|BS|BP)\d\b', text))
-
-    # Key clinical classification words
-    clinical_words = {
-        "pathogenic", "likely pathogenic", "benign", "likely benign",
-        "uncertain significance", "vus", "pathogenicity", "classification",
-        "loss of function", "frameshift", "nonsense", "splice", "missense",
-        "synonymous", "deletion", "insertion", "duplication", "null variant",
-        "hereditary", "breast", "ovarian", "cancer", "syndrome",
-        "screening", "surveillance", "mastectomy", "prophylactic",
-    }
-    lower = text.lower()
-    for word in clinical_words:
-        if word in lower:
-            terms.add(word)
-
-    # Numbers / percentages (allele frequency, etc.)
-    terms.update(re.findall(r'\b\d+\.?\d*%?\b', text))
-
-    return terms
-
-
-# ── Classification terms grouped by meaning ──────────────────────────────────
-_PATHOGENIC_TERMS   = {"pathogenic", "likely pathogenic"}
-_BENIGN_TERMS       = {"benign", "likely benign"}
-_UNCERTAIN_TERMS    = {"uncertain significance", "vus", "uncertain"}
-
-def _get_db_classifications(db_chunks: list[RetrievedChunk]) -> dict[str, str]:
-    """
-    Extract the actual classification stated for each rsID in the DB chunks.
-    Returns e.g. {"rs879254116": "pathogenic"}
-    """
-    classifications = {}
-    for chunk in db_chunks:
-        rsids = re.findall(r'\brs\d+\b', chunk.text, re.IGNORECASE)
-        text_lower = chunk.text.lower()
-        for rsid in rsids:
-            if "pathogenic" in text_lower:
-                classifications[rsid.lower()] = "pathogenic"
-            elif "benign" in text_lower:
-                classifications[rsid.lower()] = "benign"
-            elif "uncertain" in text_lower or "vus" in text_lower:
-                classifications[rsid.lower()] = "uncertain"
-    return classifications
-
-
-def programmatic_critic(draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
-    """
-    Deterministic sentence-level critic — no LLM needed.
-
-    Two-pass check:
-    1. Factual contradiction check: If a sentence says "uncertain/VUS" but the DB
-       says "Pathogenic", drop or correct it. This catches the main hallucination.
-    2. Key-term grounding check: For each sentence, check that at least one
-       clinical key term appears in the combined chunk corpus. If key terms exist
-       but none match → drop the sentence (likely hallucinated).
-    """
-    DB_SOURCES = {"Clinvar", "gnomAD", "ClinGen"}
-    db_chunks = [c for c in verified_chunks if c.source in DB_SOURCES]
-    db_classifications = _get_db_classifications(db_chunks)
-
-    # Build a single searchable corpus from all chunk texts
-    corpus = " ".join(c.text.lower() for c in verified_chunks)
-
-    sentences = re.split(r'(?<=[.!?])\s+', draft_answer.strip())
-    kept = []
-    dropped = []
-
-    for sentence in sentences:
-        if not sentence.strip():
-            continue
-
-        sentence_lower = sentence.lower()
-
-        # ── Pass 1: Factual contradiction check ──────────────────────────────
-        # If the sentence mentions a specific rsID that we have DB data for,
-        # check whether it contradicts the known classification
-        contradiction = False
-        for rsid, db_class in db_classifications.items():
-            if rsid in sentence_lower:
-                # DB says pathogenic, but sentence says uncertain/VUS
-                if db_class in ("pathogenic", "likely pathogenic"):
-                    if any(t in sentence_lower for t in ("uncertain", "vus", "not specified", "not found", "unable to find")):
-                        log.info(f"  DROP (contradicts DB: {rsid} is {db_class} but sentence says uncertain): {sentence[:80]}")
-                        dropped.append(sentence)
-                        contradiction = True
-                        break
-                # DB says benign, but sentence says pathogenic
-                elif db_class in ("benign", "likely benign"):
-                    if "pathogenic" in sentence_lower and "benign" not in sentence_lower:
-                        log.info(f"  DROP (contradicts DB: {rsid} is {db_class} but sentence says pathogenic): {sentence[:80]}")
-                        dropped.append(sentence)
-                        contradiction = True
-                        break
-
-        if contradiction:
-            continue
-
-        # ── Pass 1b: Drop hallucinated patient demographics ──────────────────
-        # If the sentence invents patient age/sex not present in any chunk
-        age_pattern = re.search(r'\b\d{1,3}-year-old\b', sentence_lower)
-        if age_pattern and age_pattern.group() not in corpus:
-            log.info(f"  DROP (hallucinated demographics): {sentence[:80]}")
-            dropped.append(sentence)
-            continue
-
-        # Pass 1c: Drop hallucinated ACMG criteria definitions
-        acmg_def_match = re.search(r'\b(PVS1|PS[1-4]|PM[1-6]|PP[1-5]|BA1|BS[1-4]|BP[1-7])\s*[:\-–]\s*(.{10,80})', sentence)
-
-        if acmg_def_match:
-            code = acmg_def_match.group(1)
-            given_def = acmg_def_match.group(2).strip().lower()
-
-            guide_corpus = " ".join(c.text.lower() for c in verified_chunks if c.source not in DB_SOURCES)
-
-            if code.lower() in guide_corpus and given_def[:30] not in guide_corpus:
-                log.info(f"  DROP (ACMG criteria {code} definition not found in guidelines): {sentence[:80]}")
-                dropped.append(sentence)
-                continue
-
-        # ── Pass 2: Key-term grounding check ─────────────────────────────────
-        key_terms = _extract_key_terms(sentence)
-
-        if not key_terms:
-            kept.append(sentence)
-            log.info(f"  KEEP (no clinical terms — transition sentence): {sentence[:80]}")
-            continue
-
-        # Check if at least one key term appears in the corpus
-        matched_terms = [t for t in key_terms if t.lower() in corpus]
-        if matched_terms:
-            kept.append(sentence)
-            log.info(f"  KEEP (terms matched: {list(matched_terms)[:3]}): {sentence[:80]}")
-        else:
-            dropped.append(sentence)
-            log.info(f"  DROP (no corpus match for terms {list(key_terms)[:5]}): {sentence[:80]}")
-
-    if dropped:
-        log.info(f"Critic result: kept {len(kept)} / dropped {len(dropped)} sentences")
-    else:
-        log.info(f"Critic result: all {len(kept)} sentences supported — no changes")
-
-    return " ".join(kept) if kept else draft_answer
-
-
 def self_rag_critic(query: str, draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
-    """Entry point for the critic — now uses the programmatic critic."""
-    log.info("Running programmatic critic (no LLM)...")
-    return programmatic_critic(draft_answer, verified_chunks)
+    """LLM-based Critic to verify clinical accuracy, especially ages and exact genes."""
+    log.info("Running LLM-based critic...")
+    
+    if not verified_chunks:
+        return draft_answer
+
+    context_block = build_context_block(verified_chunks)
+    
+    critic_prompt = f"""You are a strict Clinical Auditor. Your job is to verify a generated clinical summary against the retrieved medical context.
+    
+CONTEXT:
+{context_block}
+
+DRAFT SUMMARY TO AUDIT:
+{draft_answer}
+
+CRITICAL AUDIT RULES:
+1. FATAL ERRORS: Did the draft assign the wrong age or the wrong surgery for a gene? (e.g., Draft says BRCA1 RRSO is 45-50, but context row for BRCA1 says 35-40).
+2. HALLUCINATIONS: Are there claims in the draft not supported by the context?
+3. CITATIONS: Does every sentence end with a proper metadata citation [Source: X, Reference: Y] found exactly in the context?
+
+INSTRUCTIONS:
+You MUST rewrite the draft to accurately reflect the text. Strip out any hallucinated protocols or fake citations not present in the CONTEXT.
+CRITICAL MANDATE: You MUST ensure EVERY sentence ends with an inline citation structured EXACTLY as `[Source: X, Reference: Y]`. DO NOT strip these out!
+If the draft is already perfectly accurate, return the exact original draft but ENSURE it has the citations.
+CRITICAL: DO NOT add any explanatory text. DO NOT output your audit checklist. Output ONLY the raw, safe clinical summary.
+"""
+    try:
+        response = ollama.chat(
+            model=settings.LOCAL_LLM_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a clinical auditor. Output only the final corrected text."},
+                {"role": "user", "content": critic_prompt}
+            ]
+        )
+        final_answer = response.message.content.strip()
+        log.info(f"LLM Critic finished. Length changed from {len(draft_answer)} to {len(final_answer)}.")
+        return final_answer
+    except Exception as e:
+        log.error(f"Ollama error during critic: {e}")
+        return draft_answer
