@@ -19,9 +19,24 @@ ACMG_KEYWORDS = ["acmg", "pathogenic", "likely_pathogenic", "vus",
                  "uncertain_significance", "benign", "likely_benign", "variant classification", "pvs1",
                  "ps1", "pm2", "pp2", "bp2", "bs2", "bp4", "bs4", "criteria"]
 
-PROTOCOL_KEYWORDS = ["protocol", "chemotherapy", "radiotherapy", "surgery", "targeted therapy", "biological therapy", "immunotherapy", "treatment", "oncology", "cancer", "tumor", "metastatic", "stage", "management"]
+# Protocol = active cancer TREATMENT (chemotherapy, surgery, radiation, staging)
+# These keywords should be SPECIFIC to treatment — not generic clinical words
+PROTOCOL_KEYWORDS = [
+    "chemotherapy", "radiotherapy", "radiation therapy", "targeted therapy",
+    "immunotherapy", "biological therapy", "neoadjuvant", "adjuvant",
+    "systemic therapy", "hormone therapy", "endocrine therapy",
+    "tumor staging", "cancer staging", "metastatic", "stage iv", "stage iii",
+    "oncology treatment", "treatment regimen", "treatment protocol"
+]
+# Removed: 'cancer', 'tumor', 'stage', 'treatment', 'management', 'surgery', 'oncology'
+# These are too generic — they appear in screening/ACMG queries and cause false triggers
 
-SCREENING_KEYWORDS = ["nccn", "screening", "surveillance", "high-risk", "prevention", "early detection", "mammography", "mri", "prophylaxis", "prophylactic"]
+# Screening = carrier surveillance, prophylaxis, hereditary risk management
+SCREENING_KEYWORDS = [
+    "nccn", "screening", "surveillance", "high-risk", "prevention",
+    "early detection", "mammography", "mri", "prophylaxis", "prophylactic",
+    "risk-reducing", "rrso", "carrier", "hereditary", "germline"
+]
 
 CLINGEN_KEYWORDS = ["clinvar", "clinvar variant", "clinvar variant id", "clinvar variant name",
                      "clinvar variant description", "clinvar variant classification",
@@ -49,14 +64,22 @@ def decompose_query(query: str) -> list[SubQuery]:
             query_type="rule_retrieval"
         ))
 
-    if any(keyword in query_lower for keyword in PROTOCOL_KEYWORDS):
-        sub_queries.append(SubQuery(
-            text=query,
-            target="vector_db",
-            query_type="protocol_retrieval"
-        ))
+    has_screening = any(keyword in query_lower for keyword in SCREENING_KEYWORDS)
 
-    if any(keyword in query_lower for keyword in SCREENING_KEYWORDS):
+    if any(keyword in query_lower for keyword in PROTOCOL_KEYWORDS):
+        # Only fire protocol retrieval if we are NOT already doing a screening search
+        # A BRCA1 "screening protocol" query should go to screening_retrieval, NOT here
+        # Treatment protocol is for active cancer patients, not germline carriers
+        if not has_screening:
+            sub_queries.append(SubQuery(
+                text=query,
+                target="vector_db",
+                query_type="protocol_retrieval"
+            ))
+        else:
+            print("  [Decomposer] Protocol keywords found but screening also detected — skipping protocol_retrieval to avoid noise")
+
+    if has_screening:
         sub_queries.append(SubQuery(
             text=query,
             target="vector_db",

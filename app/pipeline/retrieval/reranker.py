@@ -1,6 +1,6 @@
 from sentence_transformers import CrossEncoder
 
-_cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+_cross_encoder = CrossEncoder("BAAI/bge-reranker-large")
 
 class RetrievedChunk:
 

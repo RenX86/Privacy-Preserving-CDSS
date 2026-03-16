@@ -5,13 +5,16 @@ CORRECT = "correct"
 AMBIGUOUS = "ambiguous"
 INCORRECT = "incorrect"
 
-def grade_chunk(query: str, chunk: RetrievedChunk) -> str:
+CORRECT_THRESHOLD  = 0.0    # BGE score > 0 means "chunk IS relevant" to this query
+AMBIGUOUS_THRESHOLD = -3.0  # BGE score -3 to 0: uncertain — keep but deprioritise
+# score < -3.0 → INCORRECT: BGE is confident this chunk is NOT relevant → dropped
 
-    if chunk.score >= 2.0:       # high confidence — clearly relevant
+def grade_chunk(query: str, chunk: RetrievedChunk) -> str:
+    if chunk.score >= CORRECT_THRESHOLD:
         return CORRECT
-    elif chunk.score >= -10.0:     # low confidence but not clearly irrelevant
+    elif chunk.score >= AMBIGUOUS_THRESHOLD:
         return AMBIGUOUS
-    else: 
+    else:
         return INCORRECT
 
 def evaluate_chunks(query: str, chunks: list[RetrievedChunk]) -> dict:
@@ -23,7 +26,7 @@ def evaluate_chunks(query: str, chunks: list[RetrievedChunk]) -> dict:
     }
 
     print(f"\n[CRAG] Grading {len(chunks)} PDF chunks:")
-    print(f"       Thresholds: CORRECT >= 2.0 | AMBIGUOUS >= -10.0 | INCORRECT < -10.0")
+    print(f"       Thresholds: CORRECT >= {CORRECT_THRESHOLD} | AMBIGUOUS >= {AMBIGUOUS_THRESHOLD} | INCORRECT < {AMBIGUOUS_THRESHOLD}")
     print(f"       {'score':>8}  {'grade':>12}  source / text preview")
     print(f"       {'-'*70}")
 

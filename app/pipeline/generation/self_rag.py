@@ -13,9 +13,10 @@ class ClinicalClaim(BaseModel):
     citations: list[str] = Field(description="List of exact metadata citations used to support this text, formatted as '[Source: X, Reference: Y]'. MUST NOT BE EMPTY.")
 
 class ClinicalResponse(BaseModel):
-    summary: ClinicalClaim = Field(description="The main clinical summary answering the query.")
-    acmg_rules: list[ClinicalClaim] = Field(description="The explicitly stated ACMG rules applied to the variant.")
-    screening_protocol: list[ClinicalClaim] = Field(description="The cancer screening protocol derived from NCCN guidelines, including ages.")
+    summary: ClinicalClaim = Field(description="The main clinical summary answering the query, including variant classification from ClinVar and gnomAD population frequency.")
+    clingen_validity: list[ClinicalClaim] = Field(description="ClinGen expert panel gene-disease validity. If ClinGen data is in context, summarise gene validity, actionability, dosage, and last curated date. Leave empty if no ClinGen data in context.")
+    acmg_rules: list[ClinicalClaim] = Field(description="ACMG criteria that SPECIFICALLY apply to this variant based on the ACMG guideline sections in context. Only cite criteria explicitly supported by the retrieved text.")
+    screening_protocol: list[ClinicalClaim] = Field(description="Cancer screening and surveillance protocol from NCCN for this specific gene, including exact ages, screening types (MRI, mammography), and risk-reducing surgery timing.")
 from app.pipeline.generation.guardrails import (
     build_system_prompt,
     build_context_block,
@@ -72,7 +73,16 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 text = summary_data.get("text", "")
                 cites = " ".join(summary_data.get("citations", []))
                 lines.append(f"**Clinical Summary**\n{text} {cites}\n")
-                
+
+            # ── ClinGen section — new field ───────────────────────────────────
+            if "clingen_validity" in data and data["clingen_validity"]:
+                lines.append("**ClinGen Expert Panel Validity**")
+                for item in data["clingen_validity"]:
+                    text = item.get("text", "")
+                    cites = " ".join(item.get("citations", []))
+                    lines.append(f"* {text} {cites}")
+                lines.append("")
+
             if "acmg_rules" in data and data["acmg_rules"]:
                 lines.append("**ACMG Pathogenicity Criteria**")
                 for rule in data["acmg_rules"]:
@@ -80,7 +90,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                     cites = " ".join(rule.get("citations", []))
                     lines.append(f"* {text} {cites}")
                 lines.append("")
-                
+
             if "screening_protocol" in data and data["screening_protocol"]:
                 lines.append("**Cancer Screening Protocol**")
                 for prot in data["screening_protocol"]:

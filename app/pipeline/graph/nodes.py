@@ -37,7 +37,11 @@ def retrieve_node(state: CDSSGraphState) -> dict:
                         freq_text = f"Population frequency for {rsid}: AF={freq_data['allele_frequency']:.6f}. {'BA1 rule APPLIES (common variant -> Benign).' if freq_data['ba1_applicable'] else 'Variant is rare in population.'}"
                         trusted_chunks.append(RetrievedChunk(text=freq_text, source="gnomAD", reference=rsid))
                     else:
-                        trusted_chunks.append(RetrievedChunk(text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. ACMG BA1 benign stand-alone rule does NOT apply.", source="gnomAD", reference=rsid))
+                        trusted_chunks.append(RetrievedChunk(
+                            text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. ACMG BA1 benign stand-alone rule does NOT apply. PM2 (absent from controls) MAY apply — requires manual review.",
+                            source="gnomAD",
+                            reference=rsid
+                        ))
 
                     trusted_chunks.append(from_postgres_result(result))
 
@@ -52,6 +56,7 @@ def retrieve_node(state: CDSSGraphState) -> dict:
                 trusted_chunks.append(from_clingen_result(r, gene))
 
     return {"trusted_chunks": trusted_chunks}
+
 
 def retrieve_pdf_node(state: CDSSGraphState) -> dict:
 
@@ -142,6 +147,7 @@ def citation_node(state: CDSSGraphState) -> dict:
     final = state["final_answer"]
     verified = state.get("verified_chunks", [])
     trusted_chunks = state.get("trusted_chunks", [])
+    candidate_chunks = state.get("candidate_chunks", [])
 
     # Fix any inline hallucinated formatting before we extract
     fixed_final_answer = fix_hallucinated_citations(final, verified)
@@ -149,12 +155,22 @@ def citation_node(state: CDSSGraphState) -> dict:
     raw_citations = extract_citations(fixed_final_answer, verified)
     citations = [Citation(source=c["source"], reference=c["reference"]) for c in raw_citations]
 
-    if len(trusted_chunks) >= 2:
+    # ── Confidence: requires BOTH structured DB hits AND guideline PDF hits ───
+    DB_SOURCES = {"Clinvar", "gnomAD", "ClinGen"}
+    db_count   = sum(1 for c in trusted_chunks if c.source in DB_SOURCES)
+    pdf_count  = len(candidate_chunks)   # candidate_chunks = what PDF_Retriever returned
+
+    has_db       = db_count >= 2
+    has_guidelines = pdf_count > 0
+
+    if has_db and has_guidelines:
         confidence = "high"
-    elif len(trusted_chunks) >= 1:
+    elif has_db or has_guidelines:
         confidence = "medium"
     else:
         confidence = "low"
+
+    print(f"[Citation] DB hits: {db_count} | PDF candidate chunks: {pdf_count} → confidence: {confidence}")
 
     # Return the updated final_answer along with citations
     return {"final_answer": fixed_final_answer, "citations": citations, "confidence": confidence}
