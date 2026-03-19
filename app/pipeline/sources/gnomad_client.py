@@ -1,7 +1,7 @@
 import httpx
-import psycopg2
 import psycopg2.extras
 from app.config import settings
+from app.db.pool import db_conn
 
 GNOMAD_API_URL = "https://gnomad.broadinstitute.org/api"
 
@@ -18,11 +18,10 @@ def _get_variant_position(rsid: str) -> dict | None:
         LIMIT 1;
     """
     try:
-        conn = psycopg2.connect(settings.POSTGRES_URL)
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, (rsid,))
-            row = cur.fetchone()
-        conn.close()
+        with db_conn() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (rsid,))
+                row = cur.fetchone()
         return dict(row) if row else None
     except Exception as e:
         print(f"  [gnomAD] DB lookup failed for {rsid}: {e}")

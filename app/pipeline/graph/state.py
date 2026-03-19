@@ -1,4 +1,5 @@
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Annotated
+import operator
 from app.pipeline.retrieval.reranker import RetrievedChunk
 from app.api.schemas import Citation
 
@@ -8,9 +9,10 @@ class CDSSGraphState(TypedDict):
     gene: Optional[str]
     sub_queries: list
 
-
-    trusted_chunks: list[RetrievedChunk]
-    candidate_chunks: list[RetrievedChunk]
+    # Annotated with operator.add so both DB_Retriever and PDF_Retriever
+    # can append their results rather than the second one overwriting the first
+    trusted_chunks:   Annotated[list[RetrievedChunk], operator.add]
+    candidate_chunks: Annotated[list[RetrievedChunk], operator.add]
 
 
     verified_chunks: list[RetrievedChunk]

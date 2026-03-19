@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     LOCAL_LLM_URL: str 
     LOCAL_LLM_MODEL: str 
     EMBEDDING_MODEL: str 
-    CLINGEN_API_URL: str 
+    CLINGEN_API_URL: str
+
+    # Set to false to disable live gnomAD lookups (privacy-sensitive environments).
+    # When disabled, the BA1/PM2 frequency note will be omitted from responses.
+    ENABLE_GNOMAD_LOOKUP: bool = True 
 
     class Config:
         env_file = ".env"

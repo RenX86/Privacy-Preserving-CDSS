@@ -5,9 +5,15 @@ CORRECT = "correct"
 AMBIGUOUS = "ambiguous"
 INCORRECT = "incorrect"
 
-CORRECT_THRESHOLD  = 0.0    # BGE score > 0 means "chunk IS relevant" to this query
-AMBIGUOUS_THRESHOLD = -3.0  # BGE score -3 to 0: uncertain — keep but deprioritise
-# score < -3.0 → INCORRECT: BGE is confident this chunk is NOT relevant → dropped
+# Tuned thresholds based on observed BGE score distribution.
+# In pilot queries all chunks scored 0.001–0.195 with CORRECT_THRESHOLD=0.0,
+# meaning nothing was ever filtered. The values below enforce a meaningful floor.
+#
+# CORRECT   >= 0.05 : chunk is clearly relevant to the query
+# AMBIGUOUS  0.01–0.05: borderline — keep but place after CORRECT chunks
+# INCORRECT < 0.01 : BGE considers this chunk unrelated — dropped
+CORRECT_THRESHOLD  = 0.05
+AMBIGUOUS_THRESHOLD = 0.01
 
 def grade_chunk(query: str, chunk: RetrievedChunk) -> str:
     if chunk.score >= CORRECT_THRESHOLD:
@@ -38,6 +44,10 @@ def evaluate_chunks(query: str, chunks: list[RetrievedChunk]) -> dict:
         # Avoid UnicodeEncodeError on Windows terminals
         safe_preview = preview.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding) if sys.stdout.encoding else preview
         print(f"       {chunk.score:>8.3f}  {grade_symbol:>12}  [{chunk.source}] {safe_preview}")
+
+    n_dropped = len(results[INCORRECT])
+    n_kept    = len(results[CORRECT]) + len(results[AMBIGUOUS])
+    print(f"\n[CRAG] Kept {n_kept} chunks | Dropped {n_dropped} INCORRECT chunks\n")
 
     return results
 

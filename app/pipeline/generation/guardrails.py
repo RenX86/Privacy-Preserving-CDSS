@@ -5,45 +5,76 @@ SAFE_FAILURE_MESSAGE = (
     "Please consult primary clinical databases or a qualified clinician."
 )
 
+
 def build_system_prompt() -> str:
-    return """You are an expert Clinical Decision Support System (CDSS) specifically designed for clinical geneticists and oncologists. 
-You are synthesizing retrieved data regarding a patient query.
+    return """\
+You are an expert Clinical Decision Support System (CDSS) for clinical geneticists and oncologists.
+You synthesize retrieved database records and guideline chunks into a structured clinical summary.
 
-CRITICAL RULES:
-1. NO PARAPHRASING: When quoting NCCN guidelines or ACMG rules, you must use the exact clinical terminology, ages, and timelines provided in the retrieved context. 
-2. IN-LINE METADATA CITATIONS: Every clinical claim MUST end with a citation containing the exact metadata headers provided in the context chunks. Do not use arbitrary reference numbers.
-3. EPISTEMOLOGICAL SEGREGATION: Clearly separate the "Variant Facts" (ClinVar/gnomAD), "Interpretation Criteria" (ACMG), and the "Clinical Protocol" (NCCN) into distinct sections.
-4. IF NOT EXPLICITLY STATED, SAY "DATA UNAVAILABLE". Do not guess.
+══════════════════════════════════════════════════════
+RULE 1 — READ THE VARIANT FACTS FIRST (non-negotiable)
+══════════════════════════════════════════════════════
+The prompt begins with a ⚑ VARIANT FACTS block. This block contains verified structured records
+from ClinVar, gnomAD, and ClinGen. You MUST read and report these BEFORE writing anything else.
+Do NOT say a variant is "not classified" or "not listed" if it appears in the ⚑ VARIANT FACTS block.
+Report the clinical_significance field EXACTLY as written — do not rephrase, soften, or upgrade it.
 
-CRITICAL TABLE READING RULES:
-1. TRACE THE ROW: Before extracting a clinical protocol, verify you are reading the exact row for the requested gene (e.g., BRCA1). Do not accidentally read the protocol for BRCA2, RAD51C, or PALB2.
-2. EXACT AGES: If a prophylactic surgery (like RRSO) or screening (like MRI) has a specified age range, you must quote the EXACT age range from the text.
-3. METADATA CITATIONS: You must append the exact bracketed header provided in the context (e.g., [Header_2: BRCA PATHOGENIC VARIANT MANAGEMENT]). Do not cite the bibliography."""
+══════════════════════════════════════════════════════
+RULE 2 — CITATIONS MUST BE COPIED FROM THE MANIFEST
+══════════════════════════════════════════════════════
+The prompt ends with a numbered CITATION MANIFEST. Every [Source: X, Reference: Y] string you write
+MUST be copied verbatim from that manifest. Do NOT invent page numbers, accession IDs, or guideline
+titles. If a reference does not appear in the manifest, do not cite it.
+
+══════════════════════════════════════════════════════
+RULE 3 — EXACT AGES AND TERMINOLOGY FROM GUIDELINES
+══════════════════════════════════════════════════════
+When writing screening protocols from NCCN chunks, copy exact age ranges and procedure names from
+the text. Do not substitute ages from memory (e.g. do not write "age 25-29" unless that exact range
+appears in the retrieved NCCN chunk text).
+
+══════════════════════════════════════════════════════
+RULE 4 — IF NOT IN CONTEXT, SAY DATA UNAVAILABLE
+══════════════════════════════════════════════════════
+Do not fill gaps with general medical knowledge. If a specific data point (e.g. gnomAD frequency,
+ClinGen curated date) is not in the context, write "Data unavailable in retrieved context."
+"""
+
 
 def build_context_block(chunks: list[RetrievedChunk]) -> str:
-
     if not chunks:
         return "No verified clinical context available."
 
-    db_sources    = {"Clinvar", "gnomAD", "ClinGen"}
-    db_chunks     = [c for c in chunks if c.source in db_sources]
-    guide_chunks  = [c for c in chunks if c.source not in db_sources]
+    db_sources   = {"Clinvar", "gnomAD", "ClinGen"}
+    db_chunks    = [c for c in chunks if c.source in db_sources]
+    guide_chunks = [c for c in chunks if c.source not in db_sources]
 
     lines = []
 
+    # ── DB facts come FIRST and are visually unmissable ───────────────────────
+    # Ministral/Qwen ignore the DB section when it comes after the long guideline
+    # block. Placing it first — with a bold flag — forces the model to read it
+    # before it processes any guideline text.
     if db_chunks:
-        lines.append("=== VARIANT DATABASE FACTS (use these for specific variant claims) ===")
+        lines.append("⚑ ═══════════════════════════════════════════════════════════")
+        lines.append("⚑  VARIANT DATABASE FACTS  —  READ THIS SECTION FIRST")
+        lines.append("⚑  These are verified structured records. Report them exactly.")
+        lines.append("⚑ ═══════════════════════════════════════════════════════════")
+        lines.append("")
         for chunk in db_chunks:
             lines.append(f"[Source: {chunk.source}, Reference: {chunk.reference}]")
             lines.append(chunk.text)
             lines.append("")
+        lines.append("⚑ ═══ END OF VARIANT DATABASE FACTS ═══")
+        lines.append("")
 
     if guide_chunks:
-        lines.append("=== CLINICAL GUIDELINES (use these for criteria and rules) ===")
+        lines.append("── CLINICAL GUIDELINES (use for criteria, rules, and protocols) ──")
+        lines.append("")
         for chunk in guide_chunks:
             lines.append(f"[Source: {chunk.source}, Reference: {chunk.reference}]")
             lines.append(chunk.text)
             lines.append("")
 
-    lines.append("--- END OF CONTEXT ---")
+    lines.append("── END OF CONTEXT ──")
     return "\n".join(lines)

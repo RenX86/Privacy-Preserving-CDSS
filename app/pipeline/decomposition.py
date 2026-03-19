@@ -38,10 +38,9 @@ SCREENING_KEYWORDS = [
     "risk-reducing", "rrso", "carrier", "hereditary", "germline"
 ]
 
-CLINGEN_KEYWORDS = ["clinvar", "clinvar variant", "clinvar variant id", "clinvar variant name",
-                     "clinvar variant description", "clinvar variant classification",
-                     "clinvar variant classification criteria", "gene validity", "clingen", "gene-specific",
-                     "expert panel", "expert panel recommendation", "expert panel recommendation criteria"]
+CLINGEN_KEYWORDS = ["gene validity", "clingen", "gene-specific",
+                     "expert panel", "expert panel recommendation",
+                     "actionability curation", "dosage sensitivity"]
 
 
 def decompose_query(query: str) -> list[SubQuery]:

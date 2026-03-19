@@ -1,9 +1,5 @@
-import psycopg2
 import psycopg2.extras
-from app.config import settings
-
-def get_connection():
-    return psycopg2.connect(settings.POSTGRES_URL)
+from app.db.pool import db_conn
 
 def get_variant_by_rsid(rsid: str) -> dict | None:
     query = """
@@ -23,14 +19,11 @@ def get_variant_by_rsid(rsid: str) -> dict | None:
     LIMIT 1;
     """
 
-    conn = get_connection()
-    try:
+    with db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
             cursor.execute(query, (rsid,))
             result = cursor.fetchone()
             return dict(result) if result else None
-    finally:
-        conn.close()
 
 def get_variant_by_gene(gene_symbol: str) -> list[dict]:
     query = """
@@ -45,11 +38,8 @@ def get_variant_by_gene(gene_symbol: str) -> list[dict]:
     ORDER BY clinical_significance;
     """
 
-    conn = get_connection()
-    try:
+    with db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
             cursor.execute(query, (gene_symbol,))
             results = cursor.fetchall()
             return [dict(row) for row in results]
-    finally:
-        conn.close()

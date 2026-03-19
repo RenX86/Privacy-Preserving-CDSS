@@ -16,14 +16,18 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
         "NCCN":    [r'\bnccn\b', r'\bscreening\b', r'\bmastectomy\b', r'\bsurveillance\b', r'\bmri\b', r'\bmammography\b', r'\bprotocol\b']
     }
 
-    # Build a map: source → reference, from actual retrieved chunks
-    source_to_ref = {}
+    # ── Build: source → SET of all valid references (not just the first one) ──
+    # Old code used first-wins: if source already in dict, skip all subsequent chunks.
+    # This collapsed all ACMG page refs to page 3 regardless of what was actually cited.
+    source_to_refs: dict[str, set] = {}
+    source_first_ref: dict[str, str] = {}  # fallback: first ref seen per source
     for chunk in used_chunks:
-        if chunk.source not in source_to_ref:
-            source_to_ref[chunk.source] = chunk.reference
+        source_to_refs.setdefault(chunk.source, set()).add(chunk.reference)
+        if chunk.source not in source_first_ref:
+            source_first_ref[chunk.source] = chunk.reference
 
     # Build a set of known real source names (lowercase) for quick lookup
-    known_sources_lower = {s.lower(): s for s in source_to_ref.keys()}
+    known_sources_lower = {s.lower(): s for s in source_to_refs.keys()}
 
     inline_pattern = re.compile(r'\[Source:\s*([^,\]]+),\s*(?:Reference:\s*)?([^\]]+)\]', re.IGNORECASE)
 
@@ -44,12 +48,15 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
                 break
 
         if actual_source_match:
-            # Source exists in our chunks — only fix the reference if it's wrong
-            correct_ref = source_to_ref[actual_source_match]
-            if cited_ref != correct_ref:
-                new_citation = f"[Source: {actual_source_match}, Reference: {correct_ref}]"
+            valid_refs = source_to_refs[actual_source_match]
+            if cited_ref in valid_refs:
+                # Citation is valid — leave it completely alone
+                continue
+            else:
+                # Source is real but ref is wrong — remap to the first ref as fallback
+                fallback_ref = source_first_ref[actual_source_match]
+                new_citation = f"[Source: {actual_source_match}, Reference: {fallback_ref}]"
                 answer_text = answer_text[:match.start()] + new_citation + answer_text[match.end():]
-            # Source and ref are correct — leave it alone
             continue
 
         # ── HALLUCINATION: The cited source doesn't match any real chunk source ──
@@ -68,13 +75,13 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
         # Need at least 2 keyword hits to confidently remap the citation
         if best_category and max_hits >= 2:
             actual_source = None
-            for s in source_to_ref.keys():
+            for s in source_to_refs.keys():
                 if best_category.lower() in s.lower():
                     actual_source = s
                     break
             if actual_source:
-                correct_ref = source_to_ref[actual_source]
-                new_citation = f"[Source: {actual_source}, Reference: {correct_ref}]"
+                fallback_ref = source_first_ref[actual_source]
+                new_citation = f"[Source: {actual_source}, Reference: {fallback_ref}]"
                 answer_text = answer_text[:match.start()] + new_citation + answer_text[match.end():]
 
     return answer_text

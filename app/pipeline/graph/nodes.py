@@ -1,4 +1,5 @@
 import re
+from app.config import settings
 from app.pipeline.graph.state import CDSSGraphState
 
 from app.pipeline.decomposition import decompose_query
@@ -32,16 +33,18 @@ def retrieve_node(state: CDSSGraphState) -> dict:
             for rsid in rsids:
                 result = get_variant_by_rsid(rsid)
                 if result:
-                    freq_data = get_allele_frequency(rsid)
-                    if freq_data:
-                        freq_text = f"Population frequency for {rsid}: AF={freq_data['allele_frequency']:.6f}. {'BA1 rule APPLIES (common variant -> Benign).' if freq_data['ba1_applicable'] else 'Variant is rare in population.'}"
-                        trusted_chunks.append(RetrievedChunk(text=freq_text, source="gnomAD", reference=rsid))
-                    else:
-                        trusted_chunks.append(RetrievedChunk(
-                            text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. ACMG BA1 benign stand-alone rule does NOT apply. PM2 (absent from controls) MAY apply — requires manual review.",
-                            source="gnomAD",
-                            reference=rsid
-                        ))
+                    # Only call gnomAD if the feature flag is enabled (H-5 privacy fix)
+                    if settings.ENABLE_GNOMAD_LOOKUP:
+                        freq_data = get_allele_frequency(rsid)
+                        if freq_data:
+                            freq_text = f"Population frequency for {rsid}: AF={freq_data['allele_frequency']:.6f}. {'BA1 rule APPLIES (common variant -> Benign).' if freq_data['ba1_applicable'] else 'Variant is rare in population.'}"
+                            trusted_chunks.append(RetrievedChunk(text=freq_text, source="gnomAD", reference=rsid))
+                        else:
+                            trusted_chunks.append(RetrievedChunk(
+                                text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. ACMG BA1 benign stand-alone rule does NOT apply. PM2 (absent from controls) MAY apply — requires manual review.",
+                                source="gnomAD",
+                                reference=rsid
+                            ))
 
                     trusted_chunks.append(from_postgres_result(result))
 
@@ -145,20 +148,23 @@ def critic_node(state: CDSSGraphState) -> dict:
 def citation_node(state: CDSSGraphState) -> dict:
 
     final = state["final_answer"]
-    verified = state.get("verified_chunks", [])
+    verified_chunks = state.get("verified_chunks", [])
     trusted_chunks = state.get("trusted_chunks", [])
-    candidate_chunks = state.get("candidate_chunks", [])
 
     # Fix any inline hallucinated formatting before we extract
-    fixed_final_answer = fix_hallucinated_citations(final, verified)
+    fixed_final_answer = fix_hallucinated_citations(final, verified_chunks)
 
-    raw_citations = extract_citations(fixed_final_answer, verified)
+    raw_citations = extract_citations(fixed_final_answer, verified_chunks)
     citations = [Citation(source=c["source"], reference=c["reference"]) for c in raw_citations]
 
-    # ── Confidence: requires BOTH structured DB hits AND guideline PDF hits ───
+    # ── Confidence: use POST-FILTER counts from verified_chunks (H-7 fix) ────
+    # Old code used len(candidate_chunks) — the raw PDF_Retriever output BEFORE
+    # CRAG filtering. This inflated confidence: many irrelevant chunks retrieved
+    # → confidence "high" even if CRAG dropped all of them.
+    # Now we count only the chunks that actually reached the LLM.
     DB_SOURCES = {"Clinvar", "gnomAD", "ClinGen"}
-    db_count   = sum(1 for c in trusted_chunks if c.source in DB_SOURCES)
-    pdf_count  = len(candidate_chunks)   # candidate_chunks = what PDF_Retriever returned
+    db_count  = sum(1 for c in verified_chunks if c.source in DB_SOURCES)
+    pdf_count = sum(1 for c in verified_chunks if c.source not in DB_SOURCES)
 
     has_db       = db_count >= 2
     has_guidelines = pdf_count > 0
@@ -170,7 +176,7 @@ def citation_node(state: CDSSGraphState) -> dict:
     else:
         confidence = "low"
 
-    print(f"[Citation] DB hits: {db_count} | PDF candidate chunks: {pdf_count} → confidence: {confidence}")
+    print(f"[Citation] Verified DB chunks: {db_count} | Verified PDF chunks: {pdf_count} → confidence: {confidence}")
 
     # Return the updated final_answer along with citations
     return {"final_answer": fixed_final_answer, "citations": citations, "confidence": confidence}

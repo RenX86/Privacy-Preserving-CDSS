@@ -45,21 +45,26 @@ def get_gene_validity(gene_symbol: str) -> list[dict]:
         return []
 
 
+# Common acronyms that match the gene regex but are NOT genes.
+# Extend this list if false positives appear.
+_NON_GENE_ACRONYMS = {
+    "ACMG", "NCCN", "VUS", "LOF", "DNA", "RNA", "PCR", "SNP", "CNV",
+    "RRSO", "MRI", "CT", "PET", "NGS", "WGS", "WES", "FISH", "IHC",
+    "HER", "ER", "PR", "HR", "OS", "PFS", "FDA", "EMA", "US", "UK",
+}
+
 def extract_gene_from_query(query_text: str) -> str | None:
     """
-    Extract a known cancer/genetic gene symbol from the query text.
-    Checks against a curated list of commonly queried genes.
-    """
-    known_genes = {
-        "BRCA1", "BRCA2", "TP53", "EGFR", "ALK", "ROS1", "MET", "ERBB2",
-        "PDGFRA", "KIT", "BRAF", "MSH2", "MLH1", "MSH6", "PMS2",
-        "APC", "RB1", "VHL", "KRAS", "PTEN", "CDKN2A", "STK11",
-        "ATM", "CHEK2", "PALB2", "RAD51C", "RAD51D", "NBN",
-    }
+    Extract a gene symbol from the query using a regex pattern.
+    Matches tokens that look like gene symbols (1 uppercase letter + 1-9 uppercase
+    letters/digits) and filters out common non-gene acronyms.
 
+    This replaces the previous hardcoded 28-gene allowlist, which silently
+    returned None for any gene not in the list (CDH1, MUTYH, BMPR1A, etc.).
+    """
     gene_pattern = re.compile(r'\b[A-Z][A-Z0-9]{1,9}\b')
     matches = gene_pattern.findall(query_text)
     for match in matches:
-        if match in known_genes:
+        if match not in _NON_GENE_ACRONYMS:
             return match
     return None
