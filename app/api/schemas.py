@@ -1,9 +1,8 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 class QueryRequest(BaseModel):
     query: str
-    patient_id: Optional[str] = None
 
 class Citation(BaseModel):
     source: str

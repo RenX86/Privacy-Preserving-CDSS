@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter
 from app.api.schemas import QueryRequest, QueryResponse
 from app.pipeline.generation.guardrails import SAFE_FAILURE_MESSAGE
@@ -11,16 +12,17 @@ def health_check():
 
 
 @router.post("/query", response_model=QueryResponse)
-def handle_query(request: QueryRequest):
+async def handle_query(request: QueryRequest):
     query = request.query
-    
+
     # ── 1. INVOKE LANGGRAPH ────────────────────────────────────
     print(f"\n[STARTING LANGGRAPH] Query: {query}")
     initial_state = {"query": query}
-    
-    # This single line runs your entire flowchart (all 7 nodes!)
-    final_state = cdss_app.invoke(initial_state)
-    
+
+    # Run the blocking LangGraph pipeline in a thread so the event loop
+    # stays free for other requests (M-8 async fix)
+    final_state = await asyncio.to_thread(cdss_app.invoke, initial_state)
+
     # ── 2. RETURN THE OUTPUT ───────────────────────────────────
     print(f"[LANGGRAPH FINISHED] Confidence: {final_state.get('confidence', 'low')}")
     return QueryResponse(

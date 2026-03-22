@@ -44,18 +44,3 @@ CREATE INDEX IF NOT EXISTS idx_documents_parent_text ON medical_documents(parent
 -- Vector similarity search index (for fast pgvector searches)
 CREATE INDEX IF NOT EXISTS idx_documents_embedding ON medical_documents USING ivfflat (embedding vector_cosine_ops);
 
--- ─── SAMPLE TEST DATA ─────────────────────────────────────────────────────────
--- One real record so we can immediately test our Python code
-
-INSERT INTO variants (rsid, gene_symbol, chromosome, position, ref_allele, alt_allele, clinical_significance, review_status, condition)
-VALUES (
-    'rs123424454',
-    'BRCA1',
-    '14',
-    2432344,
-    'A',
-    'T',
-    'pathogenic',
-    'reviewed by expert panel',
-    'Heredetitotry breast and ovarian cancer syndorme'
-)ON CONFLICT (rsid)DO NOTHING;

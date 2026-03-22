@@ -7,7 +7,7 @@ pydantic==2.12.5
 pydantic_core==2.41.5
 pydantic-settings==2.13.1
 
-#Async
+# ── Async ─────────────────────────────────────────────────────────
 starlette==0.52.1
 
 # ── Database (PostgreSQL + pgvector) ──────────────────────────────
@@ -19,6 +19,7 @@ pgvector==0.3.6
 langchain==1.2.10
 langchain-community==0.4.1
 langchain-postgres==0.0.17
+langgraph==1.0.10
 sentence-transformers==5.2.3
 ollama==0.6.1
 
@@ -26,6 +27,6 @@ ollama==0.6.1
 httpx==0.28.1
 
 # ── PDF Processing ────────────────────────────────────────────────
-pymupdf==1.24.0
-
-docling
+pymupdf==1.27.1
+pymupdf4llm==0.3.4
+docling==2.77.0

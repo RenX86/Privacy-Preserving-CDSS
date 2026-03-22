@@ -3,6 +3,14 @@ from app.config import settings
 from app.db.pool import db_conn
 import psycopg2.extras
 
+# ── Column filter allowlist (M-1 hardening) ────────────────────────────────────
+# Only these column names may appear in the WHERE clause.
+# Prevents injection if filter values ever flow from untrusted input.
+_ALLOWED_FILTER_COLUMNS = {
+    "source":   "source",
+    "category": "category",
+}
+
 
 def search_documents(query_text: str, top_k: int = 5, source_filter: str = None, category_filter: str = None) -> list[dict]:
 
@@ -11,10 +19,12 @@ def search_documents(query_text: str, top_k: int = 5, source_filter: str = None,
     # Build WHERE clause and params matching SQL placeholder order:
     # 1: %s::vector in SELECT (similarity), 2: %s in WHERE, 3: %s::vector in ORDER BY, 4: %s in LIMIT
     if source_filter:
-        where_clause = "WHERE source = %s"
+        col = _ALLOWED_FILTER_COLUMNS["source"]
+        where_clause = f"WHERE {col} = %s"
         params = (query_vector, source_filter, query_vector, top_k)
     elif category_filter:
-        where_clause = "WHERE category = %s"
+        col = _ALLOWED_FILTER_COLUMNS["category"]
+        where_clause = f"WHERE {col} = %s"
         params = (query_vector, category_filter, query_vector, top_k)
     else:
         where_clause = ""

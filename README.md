@@ -141,7 +141,7 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
   │  • rsID lookups      │   │  • NCCN Breast v2026 │
   │  • Gene-level scan   │   │  • NCCN Genetic/     │
   │  • SQL precision     │   │    Familial High-Risk│
-  │                      │   │  • 768-dim PubMedBERT│
+  │                      │   │  • 768-dim BGE embed │
   │  ✅ Air-gapped        │   │    embeddings        │
   │  ✅ Sub-millisecond   │   │                      │
   │  ✅ Exact match       │   │  ✅ Air-gapped        │
@@ -349,7 +349,7 @@ For each SubQuery where target == "vector_db":
   │  [original_query, q1, q2, q3]                                 │
   │         │                                                     │
   │         ▼  for each query:                                    │
-  │  embed_text() → 768-dim PubMedBERT vector                    │
+  │  embed_text() → 768-dim BGE-base-en-v1.5 vector              │
   │         │                                                     │
   │         ▼                                                     │
   │  SELECT ... FROM medical_documents                            │
@@ -612,7 +612,7 @@ docs/manifest.json
         chunk_size=800, chunk_overlap=100
         enriched_child = "[Header_2: SECTION NAME]\nchunk text"
       │
-      ▼ embed_text() → PubMedBERT 768-dim vector
+      ▼ embed_text() → BGE-base-en-v1.5 768-dim vector
       │
       ▼ INSERT INTO medical_documents
         (source, category, gene, chunk_text, metadata,
@@ -669,7 +669,7 @@ docs/manifest.json
 | **API** | FastAPI + Uvicorn | 0.131 / 0.41 | HTTP interface, Pydantic I/O validation |
 | **Orchestration** | LangGraph (StateGraph) | via langchain | 7-node DAG, parallel Send-based fan-out |
 | **LLM** | Ollama | 0.6.1 | Local inference — query expansion, generation, critic |
-| **Embeddings** | SentenceTransformer | 5.2.3 | PubMedBERT 768-dim vectors |
+| **Embeddings** | SentenceTransformer | 5.2.3 | BGE-base-en-v1.5 768-dim vectors |
 | **Reranking** | BAAI/bge-reranker-large | — | Cross-encoder relevance scoring |
 | **Database** | PostgreSQL 17 + pgvector | psycopg2 2.9.11 | Structured variants + vector similarity search |
 | **Connection pool** | psycopg2 ThreadedConnectionPool | — | min=2 / max=10 connections shared |
@@ -785,10 +785,10 @@ pip install -r requirements.txt
 **3. Pull a local LLM**
 ```bash
 # Best quality for this task (recommended)
-ollama pull ministral:8b
+ollama pull ministral-3:14b
 
-# Alternatives — faster but lower quality
-ollama pull qwen2.5:14b
+# Alternatives — smaller but faster
+ollama pull llama3.1:8b
 ollama pull qwen3.5:9b
 ```
 
@@ -847,10 +847,10 @@ POSTGRES_URL=postgresql://cdss-user:cdss_password@localhost:5432/cdss_db
 
 # ── Local LLM via Ollama ──────────────────────────────────────────
 LOCAL_LLM_URL=http://localhost:11434
-LOCAL_LLM_MODEL=ministral:8b      # any ollama model — swap freely
+LOCAL_LLM_MODEL=ministral-3:14b   # any ollama model — swap freely
 
 # ── Embedding Model ───────────────────────────────────────────────
-EMBEDDING_MODEL=NLP4Science/pubmedbert-base-embeddings
+EMBEDDING_MODEL=BAAI/bge-base-en-v1.5
 
 # ── ClinGen API ───────────────────────────────────────────────────
 CLINGEN_API_URL=https://search.clinicalgenome.org/kb
@@ -865,16 +865,15 @@ ENABLE_GNOMAD_LOOKUP=true
 
 | Model | Size | Speed | Quality | Notes |
 |---|---|---|---|---|
-| `ministral:8b` | 4.7GB | ★★★ | ★★★★ | Best instruction-following at this size |
-| `qwen2.5:14b` | 9GB | ★★ | ★★★★ | Strong biomedical text understanding |
-| `qwen3.5:9b` | 6.6GB | ★★★ | ★★★★ | 256K context, requires Ollama ≥ v0.17 |
-| `llama3.1:8b` | 4.7GB | ★★★ | ★★ | Baseline — citation compliance is poor |
+| `ministral-3:14b` | 9GB | ★★ | ★★★★★ | Best citation compliance + structured output (recommended) |
+| `qwen3.5:9b` | 6.6GB | ★★★ | ★★★★ | 256K context, good reasoning, requires Ollama ≥ v0.17 |
+| `llama3.1:8b` | 4.7GB | ★★★★ | ★★ | Faster but poor citation compliance and short output |
 
 ---
 
 ## 📊 Example Query & Response
 
-**Live run log (ministral:8b):**
+**Live run log (ministral-3:14b):**
 ```
 [STARTING LANGGRAPH] Query: What is the clinical significance of rs879254116...
 
@@ -903,7 +902,7 @@ BGE cross-encoder reranking 58 PDF chunks...
 
 [CRAG] Kept 31 chunks | Dropped 27 INCORRECT chunks
 
-Calling Ollama [ministral:8b] (3 DB + 8 PDF chunks)
+Calling Ollama [ministral-3:14b] (3 DB + 8 PDF chunks)
 Draft JSON generated (5580 chars)
 LLM Critic finished. Length: 4307 → 2226
 WARNING: Critic dropped citations (21→9). Reverting to draft. ← safety net triggered

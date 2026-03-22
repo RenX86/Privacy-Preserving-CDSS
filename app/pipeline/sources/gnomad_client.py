@@ -50,22 +50,22 @@ def get_allele_frequency(rsid: str) -> dict | None:
     gnomad_id = f"{chrom}-{pos}-{ref}-{alt}"
     print(f"  [gnomAD] Querying variant {gnomad_id} (from {rsid})")
 
-    # Step 2: query gnomAD with the positional variant ID
+    # Step 2: query gnomAD with parameterized GraphQL variables (not string interpolation)
     query = """
-    {
-      variant(variantId: "%s", dataset: gnomad_r4) {
+    query($id: String!) {
+      variant(variantId: $id, dataset: gnomad_r4) {
         variant_id
         rsids
         genome { af ac an }
         exome  { af ac an }
       }
     }
-    """ % gnomad_id
+    """
 
     try:
         response = httpx.post(
             GNOMAD_API_URL,
-            json={"query": query},
+            json={"query": query, "variables": {"id": gnomad_id}},
             timeout=12.0
         )
         response.raise_for_status()
