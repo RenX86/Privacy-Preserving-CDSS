@@ -62,7 +62,6 @@ def retrieve_node(state: CDSSGraphState) -> dict:
 
 
 def retrieve_pdf_node(state: CDSSGraphState) -> dict:
-
     candidate_chunks = []
 
     for sq in state["sub_queries"]:
@@ -73,7 +72,7 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
                 results = multi_query_search(sq.text, top_k=15, category_filter="protocol")
             elif sq.query_type == "screening_retrieval":
                 results = multi_query_search(sq.text, top_k=15, category_filter="screening_protocol")
-            else: 
+            else:
                 results = multi_query_search(sq.text, top_k=15)
 
             for r in results:
@@ -83,47 +82,65 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
 
 
 def evaluate_node(state: CDSSGraphState) -> dict:
-
     candidate_chunks = state.get("candidate_chunks", [])
-    trusted_chunks = state.get("trusted_chunks", [])
-    query = state["query"]
+    trusted_chunks   = state.get("trusted_chunks", [])
+    query            = state["query"]
+    gene             = state.get("gene", "")
+    gene_lower       = gene.lower() if gene else ""
 
-    TOP_PDF_CHUNKS = 5
     filtered_candidates = []
 
     if candidate_chunks:
-        
-        seen_parents = set()
+        # Deduplicate
+        seen_keys = set()
         unique_candidates = []
         for c in candidate_chunks:
             key = c.text[:200]
-            if key not in seen_parents:
-                seen_parents.add(key)
+            if key not in seen_keys:
+                seen_keys.add(key)
                 unique_candidates.append(c)
 
-        ranked = rerank_chunks(query, unique_candidates)
+        # Rerank + CRAG
+        ranked     = rerank_chunks(query, unique_candidates)
         evaluation = evaluate_chunks(query, ranked)
-
         all_passing = evaluation["correct"] + evaluation["ambiguous"]
-        
-        gene = state.get("gene", "")
-        gene_lower = gene.lower() if gene else ""
-        
-        # Keep top 6 chunks per unique source, but strongly filter NCCN for the target gene 
-        # to prevent irrelevant tumor protocols (STK11, CDH1) from crowding out BRCA1 tables via CRAG
+
+        # Gene filter + source cap
         source_counts = {}
         for chunk in all_passing:
-            source = chunk.source
-            is_nccn = "nccn" in source.lower() or "genetic" in source.lower()
+            source   = chunk.source
+            is_nccn  = "nccn" in source.lower() or "genetic" in source.lower()
             mentions_gene = gene_lower and gene_lower in chunk.text.lower()
-            
-            # Drop NCCN chunks that don't mention the target gene (ACMG rules don't mention genes, so keep them)
             if is_nccn and gene_lower and not mentions_gene:
                 continue
-
             if source_counts.get(source, 0) < 6:
                 filtered_candidates.append(chunk)
                 source_counts[source] = source_counts.get(source, 0) + 1
+
+    # ── Forced ACMG criteria fetch (done HERE after merge, not in retrieve_pdf_node) ──
+    # ACMG pages 33-36 score INCORRECT against the full clinical query because
+    # BGE sees the query as NCCN-focused. Force-fetch with ACMG-specific queries
+    # and bypass CRAG entirely for these chunks.
+    has_rule_retrieval = any(
+        sq.target == "vector_db" and sq.query_type == "rule_retrieval"
+        for sq in state.get("sub_queries", [])
+    )
+    if has_rule_retrieval:
+        from app.pipeline.sources.vector_client import search_documents
+        acmg_queries = [
+            "criteria classifying pathogenic variants very strong strong moderate supporting",
+            "PVS1 PS1 PS2 PS3 PS4 PM1 PM2 PM3 PM4 PM5 PM6 PP1 PP2 PP3 PP4 PP5",
+            "rules combining criteria classify sequence variants pathogenic benign",
+        ]
+        forced_seen = {c.text[:200] for c in filtered_candidates}
+        forced_count = 0
+        for q in acmg_queries:
+            for r in search_documents(q, top_k=5, category_filter="guideline"):
+                key = (r.get("chunk_text", "") or r.get("parent_text", ""))[:200]
+                if key not in forced_seen and forced_count < 5:
+                    forced_seen.add(key)
+                    filtered_candidates.append(from_vector_result(r))
+                    forced_count += 1
 
     verified = trusted_chunks + filtered_candidates
     return {"verified_chunks": verified}

@@ -15,11 +15,13 @@ class ClinicalClaim(BaseModel):
     )
     citations: list[str] = Field(
         description=(
-            "Citations supporting this claim. Each MUST be an EXACT copy of one line from the "
-            "CITATION MANIFEST at the end of the prompt — format: '[Source: X, Reference: Y]'. "
-            "DO NOT invent page numbers, accession IDs, or guideline names. "
-            "DO NOT write 'page 363' or any page number unless that exact string appears in the manifest. "
-            "If no manifest entry covers this claim, use the closest matching manifest line."
+            "Citations for this claim. Each MUST be an exact copy of one bullet from the "
+            "CITATION MANIFEST at the end of the prompt. "
+            "Copy the FULL string exactly as written: '[Source: X, Reference: Y]'. "
+            "Do NOT use numbers like '[1]' or '[3]'. "
+            "Do NOT write '[Source: X]' without a Reference. "
+            "Do NOT invent page numbers or source names. "
+            "If no manifest entry covers this claim, use the closest matching bullet."
         )
     )
 
@@ -68,11 +70,6 @@ from app.pipeline.retrieval.reranker import RetrievedChunk
 
 
 def _build_reference_manifest(verified_chunks: list[RetrievedChunk]) -> str:
-    """
-    Numbered manifest of every valid citation in the context.
-    Numbered format makes it harder for the model to paraphrase or mutate.
-    Placed at the END of the prompt (recency bias helps compliance).
-    """
     seen = set()
     entries = []
     for chunk in verified_chunks:
@@ -83,27 +80,24 @@ def _build_reference_manifest(verified_chunks: list[RetrievedChunk]) -> str:
 
     lines = [
         "══════════════════════════════════════════════════════════",
-        "  CITATION MANIFEST — ONLY these citations are permitted",
-        "  Copy the EXACT string including brackets. No other citations allowed.",
+        "  CITATION MANIFEST — copy these EXACT strings into citations[]",
+        "  Do NOT use numbers. Write the full [Source: X, Reference: Y] string.",
         "══════════════════════════════════════════════════════════",
     ]
-    for i, tag in enumerate(entries, 1):
-        lines.append(f"  [{i}] {tag}")
+    for tag in entries:
+        lines.append(f"  • {tag}")
     lines.append("══════════════════════════════════════════════════════════")
     return "\n".join(lines)
 
 
 def _render_citations(raw_citations: list[str]) -> str:
-    """
-    Render citations list into inline text.
-    Wraps bare 'Source: X, Reference: Y' strings that lost their brackets.
-    Skips clearly malformed strings.
-    """
     rendered = []
     for c in raw_citations:
         c = c.strip()
         if not c:
             continue
+        # Strip leading manifest number like "[3] " or "[12] "
+        c = re.sub(r'^\[\d+\]\s*', '', c)
         if c.startswith("[Source:") and c.endswith("]"):
             rendered.append(c)
         elif c.lower().startswith("source:"):
@@ -133,13 +127,18 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         f"{context_block}\n\n"
         f"Answer this clinical query using ONLY the context above:\n"
         f"{query}\n\n"
-        f"RULES BEFORE YOU WRITE:\n"
-        f"1. Read the ⚑ VARIANT DATABASE FACTS block first. Report clinical_significance exactly.\n"
-        f"2. Do NOT say a variant is unclassified if it appears in the VARIANT DATABASE FACTS.\n"
-        f"3. Every citation must be an exact copy of a line from the CITATION MANIFEST below.\n"
-        f"4. Do NOT write page numbers (e.g. 'page 363') — they are not in the manifest.\n"
-        f"5. ACMG rules: full sentences linking criterion to THIS variant. No bare codes.\n"
-        f"6. Screening ages: copy exactly from retrieved NCCN text. Do not use memorised ages.\n\n"
+        f"MANDATORY RULES:\n"
+        f"1. Your summary MUST begin: 'Variant [rsID] in [gene] is classified as [significance].'\n"
+        f"   The classification is confirmed in the ⚑ VARIANT DATABASE FACTS block above.\n"
+        f"   NEVER write 'not described', 'not found', or 'if this were pathogenic'.\n"
+        f"2. CITATIONS: copy the FULL '[Source: X, Reference: Y]' string from the manifest below.\n"
+        f"   Do NOT use '[1]', '[3]', or any number as a citation. Numbers are not citations.\n"
+        f"   Every bullet in acmg_rules and screening_protocol MUST have at least one citation.\n"
+        f"3. ACMG rules: write a complete sentence explaining WHY the criterion applies.\n"
+        f"   Example: 'PVS1 applies because this variant introduces a frameshift in BRCA1,\n"
+        f"   a gene where loss-of-function is a known disease mechanism.'\n"
+        f"   Do NOT write bare labels like 'PS (Pathogenic Strong) Evidence' with nothing after.\n"
+        f"4. Screening ages: copy exact numbers from retrieved NCCN text only.\n\n"
         f"{reference_manifest}"
     )
 
@@ -169,7 +168,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 s     = data["summary"]
                 text  = s.get("text", "").rstrip()
                 cites = _render_citations(s.get("citations", []))
-                if cites and not text.endswith("]"):
+                if cites and cites not in text:
                     text = f"{text} {cites}"
                 lines.append(f"**Clinical Summary**\n{text}\n")
 
@@ -178,7 +177,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 for item in data["clingen_validity"]:
                     text  = item.get("text", "").rstrip()
                     cites = _render_citations(item.get("citations", []))
-                    if cites and not text.endswith("]"):
+                    if cites and cites not in text:
                         text = f"{text} {cites}"
                     lines.append(f"* {text}")
                 lines.append("")
@@ -188,7 +187,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 for rule in data["acmg_rules"]:
                     text  = rule.get("text", "").rstrip()
                     cites = _render_citations(rule.get("citations", []))
-                    if cites and not text.endswith("]"):
+                    if cites and cites not in text:
                         text = f"{text} {cites}"
                     # Skip bare criterion codes with no explanation
                     if len(text.split()) <= 2:
@@ -202,7 +201,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 for prot in data["screening_protocol"]:
                     text  = prot.get("text", "").rstrip()
                     cites = _render_citations(prot.get("citations", []))
-                    if cites and not text.endswith("]"):
+                    if cites and cites not in text:
                         text = f"{text} {cites}"
                     lines.append(f"* {text}")
 
