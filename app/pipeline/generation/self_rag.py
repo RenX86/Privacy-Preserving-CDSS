@@ -44,21 +44,31 @@ class ClinicalResponse(BaseModel):
     )
     acmg_rules: list[ClinicalClaim] = Field(
         description=(
-            "ACMG criteria that apply to this variant based on the CLINICAL GUIDELINES text. "
-            "Each item: one full sentence explaining WHY the criterion applies to THIS variant. "
-            "Example: 'PVS1 applies because rs879254116 introduces a frameshift in BRCA1, "
-            "a gene where loss-of-function is a known disease mechanism per ACMG 2015.' "
-            "Only include criteria the guideline text explicitly supports. No bare codes."
+            "ACMG criteria DEFINITIONS from the guideline text in context. "
+            "For each criterion, report: (1) the criterion code, (2) its DEFINITION "
+            "copied from the ACMG guideline text, and (3) which database fact is relevant. "
+            "Example: 'PM2 is defined as: absent from controls in population databases "
+            "(ACMG 2015 Table 3). The gnomAD record shows this variant was not found, "
+            "which is relevant to this criterion.' "
+            "Do NOT conclude whether criteria apply — that requires clinical review. "
+            "Do NOT invent the variant type (frameshift, missense) unless the context "
+            "explicitly states it for this exact variant. "
+            "Do NOT claim computational predictions exist unless scores are in context."
         )
     )
     screening_protocol: list[ClinicalClaim] = Field(
         description=(
             "Cancer screening protocol from NCCN chunks in CLINICAL GUIDELINES. "
             "Copy exact ages and procedure names from the retrieved text. "
-            "Cite from the CITATION MANIFEST — use the Header_2 reference, not invented page numbers. "
+            "CRITICAL: Before extracting any row from an NCCN table, verify the gene "
+            "name in the leftmost column matches the query gene (e.g. BRCA1). "
+            "Do NOT include protocols from other genes' rows (e.g. colonoscopy from "
+            "MLH1/Lynch syndrome rows). "
+            "Cite from the CITATION MANIFEST. "
             "Leave as [] if no NCCN screening text is in the context."
         )
     )
+
 
 
 from app.pipeline.generation.guardrails import (
@@ -134,11 +144,14 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         f"2. CITATIONS: copy the FULL '[Source: X, Reference: Y]' string from the manifest below.\n"
         f"   Do NOT use '[1]', '[3]', or any number as a citation. Numbers are not citations.\n"
         f"   Every bullet in acmg_rules and screening_protocol MUST have at least one citation.\n"
-        f"3. ACMG rules: write a complete sentence explaining WHY the criterion applies.\n"
-        f"   Example: 'PVS1 applies because this variant introduces a frameshift in BRCA1,\n"
-        f"   a gene where loss-of-function is a known disease mechanism.'\n"
-        f"   Do NOT write bare labels like 'PS (Pathogenic Strong) Evidence' with nothing after.\n"
-        f"4. Screening ages: copy exact numbers from retrieved NCCN text only.\n\n"
+        f"3. ACMG rules: report the DEFINITION of each criterion from the guideline text.\n"
+        f"   Then state which database fact is RELEVANT — but do NOT conclude it applies.\n"
+        f"   Do NOT invent the variant's molecular type (frameshift, missense, splice).\n"
+        f"   Do NOT claim computational predictions exist unless actual scores are in context.\n"
+        f"   Do NOT confuse criteria codes: PM2 = absent from controls, PS2 = de novo.\n"
+        f"4. SCREENING TABLES: Before extracting any protocol row, verify the gene name\n"
+        f"   in the leftmost column matches the query gene. Do NOT include screening from\n"
+        f"   other genes' rows (e.g. colonoscopy from MLH1 rows for a BRCA1 query).\n\n"
         f"{reference_manifest}"
     )
 

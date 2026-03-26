@@ -18,7 +18,7 @@ def decompose_node(state: CDSSGraphState) -> dict:
 
     query = state["query"]
     gene = extract_gene_from_query(query)
-    sub_queries = decompose_query(query)
+    sub_queries = decompose_query(query, gene=gene)   # pass gene for focused sub-query text
 
     return {"gene": gene, "sub_queries": sub_queries}
 
@@ -75,8 +75,20 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
             else:
                 results = multi_query_search(sq.text, top_k=15)
 
-            for r in results:
-                candidate_chunks.append(from_vector_result(r))
+            batch = [from_vector_result(r) for r in results]
+
+            # ── Per-subquery reranking ────────────────────────────────────────────
+            # Rerank THIS batch against its own focused sub-query text.
+            # Previously all chunks were pooled and reranked against the
+            # full user query in evaluate_node — causing ACMG criteria
+            # tables to score 0.001 because the full query contains NCCN/
+            # screening/ClinGen terms that dilute the relevance signal.
+            # Now each batch is scored against its own topic.
+            if batch:
+                batch = rerank_chunks(sq.text, batch)
+                print(f"  [PDF] Reranked {len(batch)} chunks against: {sq.text[:60]}...")
+
+            candidate_chunks.extend(batch)
 
     return {"candidate_chunks": candidate_chunks}
 
@@ -91,7 +103,7 @@ def evaluate_node(state: CDSSGraphState) -> dict:
     filtered_candidates = []
 
     if candidate_chunks:
-        # Deduplicate
+        # Deduplicate (same chunk found by multiple sub-queries → keep first)
         seen_keys = set()
         unique_candidates = []
         for c in candidate_chunks:
@@ -100,9 +112,15 @@ def evaluate_node(state: CDSSGraphState) -> dict:
                 seen_keys.add(key)
                 unique_candidates.append(c)
 
-        # Rerank + CRAG
-        ranked     = rerank_chunks(query, unique_candidates)
-        evaluation = evaluate_chunks(query, ranked)
+        # Sort by score (set during per-subquery reranking in retrieve_pdf_node)
+        # so the CRAG log output is easy to read (highest scores first)
+        unique_candidates.sort(key=lambda c: c.score, reverse=True)
+
+        # CRAG grading — chunks already have scores from per-subquery reranking.
+        # No re-reranking against the full query here. That was the root cause
+        # of ACMG tables scoring 0.001: the full query mentions NCCN/screening/
+        # ClinGen, which dilutes the ACMG relevance signal.
+        evaluation = evaluate_chunks(query, unique_candidates)
         all_passing = evaluation["correct"] + evaluation["ambiguous"]
 
         # Gene filter + source cap
@@ -117,30 +135,10 @@ def evaluate_node(state: CDSSGraphState) -> dict:
                 filtered_candidates.append(chunk)
                 source_counts[source] = source_counts.get(source, 0) + 1
 
-    # ── Forced ACMG criteria fetch (done HERE after merge, not in retrieve_pdf_node) ──
-    # ACMG pages 33-36 score INCORRECT against the full clinical query because
-    # BGE sees the query as NCCN-focused. Force-fetch with ACMG-specific queries
-    # and bypass CRAG entirely for these chunks.
-    has_rule_retrieval = any(
-        sq.target == "vector_db" and sq.query_type == "rule_retrieval"
-        for sq in state.get("sub_queries", [])
-    )
-    if has_rule_retrieval:
-        from app.pipeline.sources.vector_client import search_documents
-        acmg_queries = [
-            "criteria classifying pathogenic variants very strong strong moderate supporting",
-            "PVS1 PS1 PS2 PS3 PS4 PM1 PM2 PM3 PM4 PM5 PM6 PP1 PP2 PP3 PP4 PP5",
-            "rules combining criteria classify sequence variants pathogenic benign",
-        ]
-        forced_seen = {c.text[:200] for c in filtered_candidates}
-        forced_count = 0
-        for q in acmg_queries:
-            for r in search_documents(q, top_k=5, category_filter="guideline"):
-                key = (r.get("chunk_text", "") or r.get("parent_text", ""))[:200]
-                if key not in forced_seen and forced_count < 5:
-                    forced_seen.add(key)
-                    filtered_candidates.append(from_vector_result(r))
-                    forced_count += 1
+    # Forced ACMG fetch hack REMOVED — no longer needed.
+    # The root cause was that ACMG chunks were reranked against the full
+    # multi-topic query (score 0.001). Now they're reranked against the
+    # focused ACMG sub-query text in retrieve_pdf_node (score 0.1+).
 
     verified = trusted_chunks + filtered_candidates
     return {"verified_chunks": verified}
