@@ -18,10 +18,10 @@ def test_generate_answer_safe_failure_on_empty_chunks():
 
 def test_fix_citations_leaves_valid_citation_unchanged():
     """A valid citation whose source+reference both exist in chunks should not be modified."""
-    chunks = [_make_chunk("PVS1 criteria text", source="ACMG_2015", reference="page 33")]
-    answer = "The variant meets PVS1. [Source: ACMG_2015, Reference: page 33]"
+    chunks = [_make_chunk("BRCA1 screening protocol text", source="Genetic-Familial High-Risk Assessment", reference="BRCA MANAGEMENT")]
+    answer = "The patient should follow screening. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA MANAGEMENT]"
     result = fix_hallucinated_citations(answer, chunks)
-    assert "[Source: ACMG_2015, Reference: page 33]" in result
+    assert "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA MANAGEMENT]" in result
 
 
 def test_fix_citations_remaps_hallucinated_source():
@@ -35,24 +35,24 @@ def test_fix_citations_remaps_hallucinated_source():
 def test_fix_citations_preserves_multiple_refs_per_source():
     """Multiple valid references for the same source should not be collapsed (H-2 fix)."""
     chunks = [
-        _make_chunk("Page 3 content about ACMG", source="ACMG_2015", reference="page 3"),
-        _make_chunk("Page 33 content about classification", source="ACMG_2015", reference="page 33"),
+        _make_chunk("Screening protocol content", source="Genetic-Familial High-Risk Assessment", reference="BRCA MANAGEMENT"),
+        _make_chunk("MRI surveillance content", source="Genetic-Familial High-Risk Assessment", reference="BREAST MRI"),
     ]
     answer = (
-        "Claim one. [Source: ACMG_2015, Reference: page 3] "
-        "Claim two. [Source: ACMG_2015, Reference: page 33]"
+        "Claim one. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA MANAGEMENT] "
+        "Claim two. [Source: Genetic-Familial High-Risk Assessment, Reference: BREAST MRI]"
     )
     result = fix_hallucinated_citations(answer, chunks)
-    assert "[Source: ACMG_2015, Reference: page 3]" in result
-    assert "[Source: ACMG_2015, Reference: page 33]" in result
+    assert "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA MANAGEMENT]" in result
+    assert "[Source: Genetic-Familial High-Risk Assessment, Reference: BREAST MRI]" in result
 
 
 def test_extract_citations_deduplicates():
     """Duplicate citations in the answer text should appear only once in the output."""
-    chunks = [_make_chunk("text", source="ACMG_2015", reference="page 3")]
+    chunks = [_make_chunk("text", source="NCCN_Breast_v2_2026", reference="page 3")]
     answer = (
-        "Claim one. [Source: ACMG_2015, Reference: page 3] "
-        "Claim two. [Source: ACMG_2015, Reference: page 3]"
+        "Claim one. [Source: NCCN_Breast_v2_2026, Reference: page 3] "
+        "Claim two. [Source: NCCN_Breast_v2_2026, Reference: page 3]"
     )
     citations = extract_citations(answer, chunks)
     assert len(citations) == 1

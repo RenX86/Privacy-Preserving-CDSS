@@ -1,10 +1,4 @@
 {
-  "ACMG_2015_v3.pdf": {
-    "source": "ACMG_2015",
-    "category": "guideline",
-    "gene": null,
-    "parser": "pymupdf"
-  },
   "Breast.pdf": {
     "source": "NCCN_Breast_v2_2026",
     "category": "protocol",

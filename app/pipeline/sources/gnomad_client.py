@@ -91,7 +91,7 @@ def get_allele_frequency(rsid: str) -> dict | None:
             "gnomad_id":        gnomad_id,
             "allele_frequency": af,
             "is_common":        af >= 0.05,
-            "ba1_applicable":   af >= 0.05,  # ACMG BA1: >5% AF = stand-alone benign
+            "ba1_applicable":   af >= 0.05,  # BA1: >5% AF = stand-alone benign
             "genome_ac":        genome.get("ac"),
             "genome_an":        genome.get("an"),
         }

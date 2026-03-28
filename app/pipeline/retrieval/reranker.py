@@ -113,7 +113,7 @@ def from_clingen_result(result: dict, gene: str) -> RetrievedChunk:
         f"Variant Expert Panel: {variant_str}\n"
         f"Last curated: {curated}\n"
         f"Interpretation note: ClinGen has validated the gene-disease relationship for {symbol}. "
-        f"Variants in this gene should be interpreted using ClinGen/ACMG joint guidelines."
+        f"Variants in this gene should be interpreted using ClinGen guidelines."
     )
 
     return RetrievedChunk(

@@ -33,8 +33,8 @@ RULE 2 — CITATIONS MUST BE COPIED FROM THE MANIFEST
 ══════════════════════════════════════════════════════
 The prompt ends with a numbered CITATION MANIFEST. Every [Source: X, Reference: Y] string you
 write MUST be copied verbatim from that manifest — WITHOUT the leading number.
-Write: [Source: ACMG_2015, Reference: page 33]
-NOT:  [3] [Source: ACMG_2015, Reference: page 33]
+Write: [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC VARIANT-POSITIVE MANAGEMENT]
+NOT:  [3] [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC VARIANT-POSITIVE MANAGEMENT]
 NOT:  ([3])
 
 ══════════════════════════════════════════════════════
@@ -74,24 +74,6 @@ the leftmost column of THAT SPECIFIC ROW matches the query gene.
   ✓ RIGHT: Only extracting data from rows explicitly labeled BRCA1 or BRCA1/2
 
 If a screening procedure does not appear in the gene-specific rows, do NOT include it.
-
-══════════════════════════════════════════════════════
-RULE 7 — ACMG: REPORT DEFINITIONS, DO NOT APPLY
-══════════════════════════════════════════════════════
-For the acmg_rules field, you must ONLY report what the ACMG guideline text DEFINES
-for each criterion. You are NOT a variant curator. Do not decide which criteria "apply"
-to the variant.
-
-  ✓ CORRECT: "PVS1 is defined as: null variant in a gene where loss-of-function is a
-    known mechanism of disease (ACMG 2015, Table 3)."
-  ✗ WRONG:  "PVS1 applies because rs879254116 introduces a frameshift in BRCA1."
-    (You invented the frameshift — it's not in the context.)
-
-For EACH criterion you list:
-  1. State the criterion code and its DEFINITION from the guideline text
-  2. Then state what EVIDENCE from the database facts is relevant (e.g. "gnomAD reports
-     variant not found, which is relevant to PM2")
-  3. Do NOT conclude whether the criterion applies — that requires clinical review
 """
 
 
@@ -130,7 +112,7 @@ def build_context_block(chunks: list[RetrievedChunk]) -> str:
         lines.append("")
 
     if guide_chunks:
-        lines.append("── CLINICAL GUIDELINES (use for criteria, rules, and protocols) ──")
+        lines.append("── CLINICAL GUIDELINES (screening protocols and management) ──")
         lines.append("")
         for chunk in guide_chunks:
             lines.append(f"[Source: {chunk.source}, Reference: {chunk.reference}]")

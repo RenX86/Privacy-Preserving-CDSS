@@ -58,13 +58,13 @@ def _clean_variants(raw: str, n: int) -> list[str]:
 def expand_queries(original_query: str, n: int = 3, query_type: str = "general") -> list[str]:
     """
     Generate targeted clinical sub-queries to retrieve specific guideline sections.
-    Focuses on extracting ACMG criteria codes and classification rules.
+    Uses per-category prompt templates for screening, protocol, and general queries.
     """
     if query_type == "screening_retrieval":
         prompt = f"""You are a clinical genetics search assistant.
 Generate {n} short, specific search queries to retrieve cancer screening and surveillance sections.
 Focus on: BRCA carrier management, surveillance schedules (mammography, MRI ages), risk-reducing surgery (RRSO, mastectomy timing), prophylactic interventions, hereditary cancer prevention.
-DO NOT generate ACMG criteria codes or treatment chemotherapy protocols.
+DO NOT generate treatment chemotherapy protocols or unrelated topics.
 Return ONLY the queries, one per line, no numbering, no explanation.
 
 Original query: {original_query}
@@ -78,7 +78,7 @@ hereditary breast ovarian cancer surveillance screening protocol"""
         prompt = f"""You are a clinical oncology search assistant.
 Generate {n} short, specific search queries to retrieve cancer treatment protocol sections.
 Focus on: chemotherapy regimens, radiation, surgery, targeted therapy, immunotherapy, staging, disease management.
-DO NOT generate ACMG criteria codes or screening intervals.
+DO NOT generate screening intervals or unrelated topics.
 Return ONLY the queries, one per line, no numbering, no explanation.
 
 Original query: {original_query}
@@ -90,24 +90,22 @@ triple negative breast cancer immunotherapy targeted therapy"""
 
     else:
         prompt = f"""You are a clinical genetics search assistant.
-Generate {n} short search queries to retrieve ACMG variant classification criteria sections.
-Each query must target ONE specific aspect of ACMG criteria ONLY.
+Generate {n} short search queries to retrieve relevant clinical guideline and protocol sections.
+Each query must target ONE specific clinical topic.
 
 STRICT RULES:
 - Do NOT include gene names (BRCA1, TP53 etc.) in the queries
 - Do NOT include rsIDs in the queries  
-- Do NOT mix NCCN, ClinGen, or screening topics
 - Do NOT rephrase the original question
-- Focus ONLY on: PVS1/PS/PM/PP/BA/BS/BP criteria codes, evidence weights,
-  pathogenicity thresholds, combining rules, variant classification framework
+- Focus on: variant classification, clinical significance, screening guidelines,
+  risk management, population frequency interpretation, gene-disease associations
 
 Return ONLY the queries, one per line, no numbering, no explanation.
 
 Example good queries:
-PVS1 null variant loss of function very strong pathogenic evidence
-PS1 PS2 strong pathogenic evidence same amino acid prior observation
-PM1 PM2 moderate evidence mutational hotspot absent controls gnomAD
-rules combining criteria classify sequence variants pathogenic benign table"""
+variant clinical significance interpretation pathogenic classification
+hereditary cancer risk management surveillance recommendations
+population allele frequency variant rarity clinical relevance"""
 
     try:
         # ── JSON Schema constrained generation ────────────────────────────────
@@ -133,11 +131,11 @@ rules combining criteria classify sequence variants pathogenic benign table"""
 
         # ── Parse the guaranteed-JSON response ────────────────────────────────
         raw = response.message.content
-        # raw is a JSON string like: '{"queries": ["ACMG PVS1 criteria", "PS1 evidence", "PM2 absent"]}'  
+        # raw is a JSON string like: '{"queries": ["variant classification criteria", "screening guidelines", ...]}'
         
         data = json.loads(raw)
         # ↑ json.loads() converts the JSON string into a Python dict
-        # result: {"queries": ["ACMG PVS1 criteria", ...]}
+        # result: {"queries": ["variant classification criteria", ...]}
         
         variants = data.get("queries", [])[:n]
         # ↑ .get("queries", []) safely extracts the list (falls back to [] if key missing)
@@ -187,7 +185,7 @@ def multi_query_search(
     elif category_filter == "protocol":
         expand_type = "protocol_retrieval"
     else:
-        expand_type = "rule_retrieval"
+        expand_type = "general"
     queries = expand_queries(query, n=n_variants, query_type=expand_type)
 
     seen_texts = set()

@@ -4,7 +4,7 @@ from app.pipeline.retrieval.reranker import RetrievedChunk
 from app.pipeline.retrieval.crag_evaluator import evaluate_chunks, CORRECT_THRESHOLD, AMBIGUOUS_THRESHOLD
 
 
-def _make_chunk(text: str, source: str = "ACMG_2015", reference: str = "page 1") -> RetrievedChunk:
+def _make_chunk(text: str, source: str = "NCCN_Breast_v2_2026", reference: str = "page 1") -> RetrievedChunk:
     return RetrievedChunk(text=text, source=source, reference=reference)
 
 
@@ -12,11 +12,11 @@ def test_reranker_sorts_by_score_descending():
     """Reranked chunks should be ordered by cross-encoder score (highest first)."""
     from app.pipeline.retrieval.reranker import rerank_chunks
     chunks = [
-        _make_chunk("BRCA1 PVS1 null variant loss of function"),
+        _make_chunk("BRCA1 carrier breast MRI mammography screening"),
         _make_chunk("This is about weather forecasting and climate models"),
-        _make_chunk("ACMG criteria for pathogenic classification strong evidence"),
+        _make_chunk("NCCN hereditary cancer screening surveillance protocol"),
     ]
-    ranked = rerank_chunks("ACMG BRCA1 pathogenic criteria", chunks)
+    ranked = rerank_chunks("BRCA1 NCCN screening protocol", chunks)
     # The clinical chunks should score higher than weather text
     assert len(ranked) == 3
 
@@ -40,9 +40,9 @@ def test_crag_ambiguous_threshold_value():
 
 def test_crag_grading_high_score_is_correct():
     """A chunk graded with a score >= 0.05 should be classified as CORRECT."""
-    chunks = [_make_chunk("PVS1 null variant criteria for BRCA1")]
+    chunks = [_make_chunk("BRCA1 carrier screening mammography MRI")]
     # Simulate the evaluate function — we test the grading logic
-    result = evaluate_chunks("ACMG BRCA1 PVS1 criteria", chunks)
+    result = evaluate_chunks("BRCA1 NCCN screening protocol", chunks)
     # Result should have keys: correct, ambiguous, incorrect
     assert "correct" in result
     assert "ambiguous" in result

@@ -45,10 +45,10 @@
 
 ## 🔬 What It Does
 
-This system answers complex clinical and genomic queries — variant classification, ACMG criteria application, NCCN protocol retrieval, and ClinGen expert panel validation — with **zero hallucinations and full data privacy**.
+This system answers complex clinical and genomic queries — variant classification, NCCN protocol retrieval, and ClinGen expert panel validation — with **zero (Almost) hallucinations and full data privacy**.
 
 **Example query:**
-> *"What is the clinical significance of rs879254116 in BRCA1, which ACMG pathogenicity criteria apply, and what cancer screening protocol should the patient follow? Also confirm the ClinGen expert panel validity for BRCA1."*
+> *"What is the clinical significance of rs879254116 in BRCA1 and what cancer screening protocol should the patient follow? Also confirm the ClinGen expert panel validity for BRCA1."*
 
 **Example output structure:**
 ```
@@ -61,16 +61,6 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
   Actionability curations available. Last curated: 08/29/2024.
   [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
 
-**ACMG Pathogenicity Criteria**
-* PVS1: Null variant (nonsense, frameshift, canonical ±1 or 2 splice sites,
-  initiation codon, or multi-exon deletion) in a gene where loss of function
-  is a known mechanism of disease.
-  [Source: ACMG_2015, Reference: page 33]
-* PM2: Absent from controls (or at extremely low frequency if recessive)
-  in population databases. The gnomAD record shows this variant was
-  not found, which is relevant to this criterion.
-  [Source: ACMG_2015, Reference: page 33]
-
 **Cancer Screening Protocol**
 * Annual breast MRI and mammography starting at age 25-29 years.
   [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines
@@ -80,16 +70,14 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
   Reference: Bilateral Salpingo-Oophorectomy]
 ```
 
-> **Design principle — ACMG criteria:** The system reports ACMG criteria **definitions** from the guideline text and links them to relevant database evidence. It does NOT conclude which criteria "apply" to the specific variant — that requires clinical review. This prevents the LLM from inventing variant biology (e.g., guessing frameshift vs. missense when no variant type is in the data).
-
 **Key guarantees:**
 | Guarantee | How it's enforced |
 |-----------|------------------|
 | 🔒 No patient data leaves the system | All LLM inference via local Ollama; gnomAD receives only positional coords |
 | 📎 Every claim has a citation | Citation manifest injected into prompt; enforcer post-validates all refs |
-| 🚫 No hallucinated variant biology | Rules 5+7 forbid inventing variant types or applying ACMG criteria from memory |
+| 🚫 No hallucinated variant biology | Rule 5 forbids inventing variant types or molecular mechanisms from memory |
 | 🧬 No cross-gene table slippage | Rule 6 requires gene-name verification in every NCCN table row |
-| ✅ Structured, auditable output | 4-section Pydantic schema: Summary · ClinGen · ACMG · Screening |
+| ✅ Structured, auditable output | 3-section Pydantic schema: Summary · ClinGen · Screening |
 | ⚡ Safe failure | Insufficient data → predefined refusal, never a guess |
 
 ---
@@ -145,19 +133,18 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
 
   ┌──────────────────────┐   ┌──────────────────────┐
   │  🗄️  PostgreSQL       │   │  🔮 pgvector       │
-  │  ClinVar (local)     │   │  ACMG + NCCN (local) │
+  │  ClinVar (local)     │   │  NCCN (local)       │
   │                      │   │                      │
-  │  • Millions of       │   │  • ACMG 2015         │
-  │    variant records   │   │    guidelines        │
-  │  • rsID lookups      │   │  • NCCN Breast v2026 │
-  │  • Gene-level scan   │   │  • NCCN Genetic/     │
-  │  • SQL precision     │   │    Familial High-Risk│
-  │                      │   │  • 768-dim BGE embed │
-  │  ✅ Air-gapped       │   │    embeddings       │
-  │  ✅ Sub-millisecond  │   │                     │
-  │  ✅ Exact match      │   │  ✅ Air-gapped      │
-  └──────────────────────┘   │  ✅ Semantic search  │
-                              └─────────────────────┘
+  │  • Millions of       │   │  • NCCN Breast v2026 │
+  │    variant records   │   │  • NCCN Genetic/     │
+  │  • rsID lookups      │   │    Familial High-Risk│
+  │  • Gene-level scan   │   │  • 768-dim BGE embed │
+  │  • SQL precision     │   │    embeddings       │
+  │                      │   │                     │
+  │  ✅ Air-gapped       │   │  ✅ Air-gapped      │
+  │  ✅ Sub-millisecond  │   │  ✅ Semantic search  │
+  │  ✅ Exact match      │   └─────────────────────┘
+  └──────────────────────┘
 
   ┌──────────────────────┐   ┌──────────────────────┐
   │  🌐 gnomAD v4 API     │   │  🌐 ClinGen REST API  │
@@ -165,10 +152,10 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
   │                      │   │                      │
   │  • Population allele │   │  • Gene-disease      │
   │    frequency         │   │    validity          │
-  │  • ACMG BA1 rule:    │   │  • Actionability     │
+  │  • BA1 rule:         │   │  • Actionability     │
   │    AF ≥ 5% → Benign  │   │  • Dosage sensitivity│
-  │  • ACMG PM2 rule:    │   │  • Variant expert    │
-  │    absent → may apply│   │    panel status      │
+  │  • PM2 flag:         │   │  • Variant expert    │
+  │    absent → noted    │   │    panel status      │
   │  • Sends: chrom-pos- │   │  • Last curated date │
   │    ref-alt only      │   │  • Sends: gene symbol│
   │                      │   │    only (e.g. BRCA1) │
@@ -269,29 +256,28 @@ Query: "What is rs879254116 in BRCA1 and what NCCN screening applies? ClinGen va
 ┌─────────────────┐   ┌──────────────────────┐   ┌────────────────────┐
 │SubQuery 1       │   │SubQuery 2            │   │SubQuery 3          │
 │target: postgres │   │target: vector_db     │   │target: clingen     │
-│type: data_ext.  │   │type: screening_ret.  │   │type: rule_retrieval│
+│type: data_ext.  │   │type: screening_ret.  │   │type: clingen_lookup│
 │                 │   │                      │   │                    │
 │text: "Get       │   │text: "NCCN cancer    │   │text: original query│
 │clinical signif. │   │screening surveillance│   │(API call, not      │
 │for rs879254116" │   │mammography MRI BRCA1 │   │ vector search)     │
 │                 │   │carrier management"   │   │                    │
-│✅ Already focused│   │✅ Focused — no ACMG  │   │✅ API-based         │
-└─────────────────┘   │   or ClinGen terms   │   └────────────────────┘
+│✅ Already focused│   │✅ Focused — with     │   │✅ API-based         │
+└─────────────────┘   │   only NCCN terms    │   └────────────────────┘
                       └──────────────────────┘
 ```
 
-> **Why focused sub-query text matters:** When the reranker sees `"ACMG criteria PVS1 PM2"` vs an ACMG table about PVS1, it scores **0.601** (CORRECT). When it sees the full 40-word mixed query, the same table scores **0.001** (INCORRECT → dropped). Focused text = 200-400x improvement in relevance scoring.
+> **Why focused sub-query text matters:** When the reranker sees focused topic text vs a relevant document chunk, it scores much HIGHER than when using the full mixed query. Focused text dramatically improves relevance scoring.
 
 **Keyword groups that trigger each sub-query type:**
 
 | Detected pattern | Sub-query target | Sub-query type | Focused text template |
 |---|---|---|---|
 | `rs\d+`, `NM_\d+.\d+`, `NP_\d+.\d+` | `postgres` | `data_extraction` | `"Get clinical significance for {rsID}"` |
-| `acmg`, `pathogenic`, `pvs1`, `criteria`, `vus`, `benign` | `vector_db` | `rule_retrieval` | `"ACMG pathogenicity criteria PVS1 PS1-4 PM1-5 PP1-5 {gene} {variant}"` |
 | `nccn`, `screening`, `surveillance`, `rrso`, `hereditary`, `mammography`, `mri` | `vector_db` | `screening_retrieval` | `"NCCN cancer screening surveillance mammography MRI risk-reducing {gene} carrier"` |
 | `chemotherapy`, `neoadjuvant`, `radiotherapy`, `treatment regimen` | `vector_db` | `protocol_retrieval` | `"Cancer treatment protocol chemotherapy surgery radiation {gene}"` |
-| `clingen`, `gene validity`, `expert panel`, `actionability` | `clingen` | `rule_retrieval` | Original query (ClinGen is API-based, not vector search) |
-| *(no match)* | `vector_db` | `rule_retrieval` | Original query *(fallback)* |
+| `clingen`, `gene validity`, `expert panel`, `actionability` | `clingen` | `clingen_lookup` | Original query (ClinGen is API-based, not vector search) |
+| *(no match)* | `vector_db` | `general` | Original query *(fallback, no category filter)* |
 
 > **Screening takes priority over protocol**: if both keywords appear (e.g. "BRCA1 screening protocol"), only `screening_retrieval` fires — `protocol_retrieval` is suppressed to avoid noise.
 
@@ -342,7 +328,7 @@ For each SubQuery where target == "clingen":
 
 ### Node 3 — PDF\_Retriever
 
-Searches the local pgvector database using multi-query expansion. Each sub-query's results are **reranked per-subquery** against their own focused text before being pooled — ensuring ACMG criteria are scored against ACMG queries, not against the full multi-topic user query.
+Searches the local pgvector database using multi-query expansion. Each sub-query's results are **reranked per-subquery** against their own focused text before being pooled — ensuring screening chunks are scored against screening queries, not against the full multi-topic user query.
 
 ```
 For each SubQuery where target == "vector_db":
@@ -351,11 +337,11 @@ For each SubQuery where target == "vector_db":
   ┌───────────────────────────────────────────────────────────────┐
   │  seed = focused sub-query text (from Decomposer)              │
   │                                                               │
-  │  e.g. "ACMG pathogenicity criteria PVS1 PS1 PM2 BRCA1"       │
+  │  e.g. "NCCN cancer screening surveillance BRCA1"              │
   │       → LLM generates 3 variants:                             │
-  │       • ACMG PVS1 criteria loss of function null alleles      │
-  │       • ACMG PP3 PP4 moderate computational prediction        │
-  │       • ACMG BS1 BS2 benign evidence population frequency     │
+  │       • BRCA1 carrier annual breast MRI mammography age        │
+  │       • risk-reducing salpingo-oophorectomy RRSO age BRCA      │
+  │       • hereditary breast ovarian cancer surveillance protocol │
   │                                                               │
   │  Output: ExpandedQueries {queries: [q1, q2, q3]}             │
   └───────────────────────────────────────────────────────────────┘
@@ -369,7 +355,7 @@ For each SubQuery where target == "vector_db":
   │         │                                                     │
   │         ▼                                                     │
   │  SELECT ... FROM medical_documents                            │
-  │  WHERE category = {guideline|protocol|screening_protocol}     │
+  │  WHERE category = {protocol|screening_protocol}               │
   │  ORDER BY embedding <=> query_vector                          │
   │  LIMIT 15                                                     │
   └───────────────────────────────────────────────────────────────┘
@@ -381,9 +367,6 @@ For each SubQuery where target == "vector_db":
   │  ★ BGE cross-encoder reranks THIS batch against the focused  │
   │    sub-query text (not the full user query)                   │
   │                                                               │
-  │  Why: ACMG Table 3 scores 0.601 vs "ACMG criteria PVS1 PM2" │
-  │       but only 0.001 vs the full 40-word user query           │
-  │                                                               │
   │  Chunks arrive at Evaluator already scored per-topic          │
   └───────────────────────────────────────────────────────────────┘
 ```
@@ -392,7 +375,6 @@ For each SubQuery where target == "vector_db":
 
 | File | Source name | Category | Parser |
 |---|---|---|---|
-| `ACMG_2015_v3.pdf` | `ACMG_2015` | `guideline` | PyMuPDF4LLM (page chunks) |
 | `Breast.pdf` | `NCCN_Breast_v2_2026` | `protocol` | Docling (table-aware) |
 | `Genetic-Familial High-Risk Assessment...pdf` | `Genetic-Familial High-Risk Assessment` | `screening_protocol` | Docling (table-aware) |
 
@@ -442,19 +424,19 @@ Merges both retrieval branches, applies quality filtering, and produces the fina
                    typically 3 DB + 8–12 PDF chunks
 ```
 
-> **Previous design flaw (fixed):** The Evaluator previously re-reranked ALL chunks against the full multi-topic user query. This caused ACMG criteria tables to score 0.001 (mixing NCCN/screening terms diluted the relevance signal) and get dropped as INCORRECT. Now chunks are scored per-subquery in PDF_Retriever before reaching the Evaluator.
+> **Previous design flaw (fixed):** The Evaluator previously re-reranked ALL chunks against the full multi-topic user query. This caused chunks to score very low (mixing unrelated terms diluted the relevance signal) and get dropped as INCORRECT. Now chunks are scored per-subquery in PDF_Retriever before reaching the Evaluator.
 
 ---
 
 ### Node 5 — Generator
 
-Builds a structured clinical response using grammar-constrained JSON generation and a 7-rule system prompt.
+Builds a structured clinical response using grammar-constrained JSON generation and a 6-rule system prompt.
 
 ```
   verified_chunks
         │
         ▼
-  build_system_prompt() — 7 anti-hallucination rules:
+  build_system_prompt() — 6 anti-hallucination rules:
   ┌──────────────────────────────────────────────────────┐
   │  RULE 1: Variant facts block is ground truth          │
   │  RULE 2: Citations must be copied from manifest       │
@@ -464,8 +446,6 @@ Builds a structured clinical response using grammar-constrained JSON generation 
   │          missense/de novo/computational predictions)   │
   │  RULE 6: Table row isolation — verify gene name in    │
   │          every NCCN table row before extracting data   │
-  │  RULE 7: ACMG — report definitions only, do not      │
-  │          apply criteria to the specific variant        │
   └──────────────────────────────────────────────────────┘
         │
         ▼
@@ -479,14 +459,15 @@ Builds a structured clinical response using grammar-constrained JSON generation 
   │  *** CONFIRMED CLASSIFICATION: Pathogenic ***        │
   │                                                      │
   │  [Source: gnomAD, Reference: rs879254116]            │
-  │  Variant not found. PM2 (absent) MAY apply.          │
+  │  Variant not found. Absence from controls noted.      │
   │                                                      │
   │  [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]    │
   │  Gene-disease validity: True. Actionability: True.   │
   │                                                      │
   │  ── CLINICAL GUIDELINES ──────────────────────────  │
-  │  [Source: ACMG_2015, Reference: page 33]             │
-  │  Table 3: Criteria for Classifying Pathogenic...     │
+  │  [Source: Genetic-Familial High-Risk Assessment,     │
+  │   Reference: BRCA PATHOGENIC VARIANT-POSITIVE MGMT]  │
+  │  NCCN screening protocol text...                     │
   │  ...                                                 │
   └──────────────────────────────────────────────────────┘
         │
@@ -497,8 +478,7 @@ Builds a structured clinical response using grammar-constrained JSON generation 
   │  [1] [Source: Clinvar, Reference: rs879254116]       │
   │  [2] [Source: gnomAD, Reference: rs879254116]        │
   │  [3] [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]│
-  │  [4] [Source: ACMG_2015, Reference: page 33]         │
-  │  [5] [Source: Genetic-Familial..., Reference: BRCA   │
+  │  [4] [Source: Genetic-Familial..., Reference: BRCA   │
   │       PATHOGENIC VARIANT-POSITIVE MANAGEMENT]        │
   └──────────────────────────────────────────────────────┘
         │
@@ -510,7 +490,6 @@ Builds a structured clinical response using grammar-constrained JSON generation 
   │  ClinicalResponse {                                  │
   │    summary: ClinicalClaim,         ← variant facts   │
   │    clingen_validity: [ClinicalClaim], ← ClinGen data │
-  │    acmg_rules: [ClinicalClaim],    ← definitions     │
   │    screening_protocol: [ClinicalClaim] ← NCCN        │
   │  }                                                   │
   │                                                      │
@@ -627,14 +606,6 @@ docs/manifest.json
       │
       ▼ discover_documents()
       │
-      ├─── ACMG_2015_v3.pdf ──► parser: pymupdf
-      │         │
-      │         ▼ pymupdf4llm.to_markdown(page_chunks=True)
-      │         │  One dict per page → no header-splitting needed
-      │         │  Scrub: journal headers, HHS notices, author lines
-      │         │
-      │         ▼ sections = list of page dicts
-      │
       ├─── Breast.pdf (NCCN) ──► parser: docling
       │         │
       │         ▼ Docling (do_table_structure=True, do_ocr=False)
@@ -716,10 +687,10 @@ docs/manifest.json
 | **Reranking** | BAAI/bge-reranker-large | — | Cross-encoder relevance scoring |
 | **Database** | PostgreSQL 17 + pgvector | psycopg2 2.9.11 | Structured variants + vector similarity search |
 | **Connection pool** | psycopg2 ThreadedConnectionPool | — | min=2 / max=10 connections shared |
-| **PDF — NCCN** | Docling | unpinned | Table-structure-aware PDF → Markdown |
-| **PDF — ACMG** | PyMuPDF4LLM | — | Page-chunk PDF → Markdown |
+| **PDF** | Docling | unpinned | Table-structure-aware PDF → Markdown |
+| **PDF (alt)** | PyMuPDF4LLM | — | Page-chunk PDF → Markdown |
 | **Chunking** | LangChain text splitters | 1.2.10 | MarkdownHeader + Recursive (800 chars, 100 overlap) |
-| **External API 1** | gnomAD v4 GraphQL | httpx 0.28.1 | Allele frequency, BA1/PM2 criteria |
+| **External API 1** | gnomAD v4 GraphQL | httpx 0.28.1 | Allele frequency, BA1/PM2 annotations |
 | **External API 2** | ClinGen REST | httpx 0.28.1 | Gene validity, expert panel curation |
 | **Config** | pydantic-settings | 2.13.1 | `.env`-based configuration |
 | **Container** | Docker Compose | — | pgvector/pgAdmin |
@@ -780,7 +751,6 @@ Privacy-Preserving-CDSS/
 │
 ├── docs/
 │   ├── manifest.json               Parser + source + category metadata per PDF
-│   ├── guidelines/                 ACMG_2015_v3.pdf
 │   ├── protocols/                  NCCN Breast v2 2026
 │   └── screening/                  NCCN Genetic/Familial High-Risk Assessment
 │
@@ -872,7 +842,7 @@ python -m uvicorn app.main:app --port 5656 --reload
 curl -X POST http://localhost:5656/query \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "What is the clinical significance of rs879254116 in BRCA1, which ACMG pathogenicity criteria apply, and what cancer screening protocol should the patient follow according to NCCN guidelines? Also confirm the ClinGen expert panel validity for BRCA1."
+    "query": "What is the clinical significance of rs879254116 in BRCA1 and what cancer screening protocol should the patient follow according to NCCN guidelines? Also confirm the ClinGen expert panel validity for BRCA1."
   }'
 ```
 
@@ -900,7 +870,7 @@ CLINGEN_API_URL=https://search.clinicalgenome.org/kb
 
 # ── Privacy flags ─────────────────────────────────────────────────
 # false = fully air-gapped, disables live gnomAD allele frequency calls
-# true  = enables gnomAD BA1/PM2 criteria (sends chrom-pos-ref-alt only)
+# true  = enables gnomAD BA1/PM2 annotations (sends chrom-pos-ref-alt only)
 ENABLE_GNOMAD_LOOKUP=true
 ```
 
@@ -919,12 +889,10 @@ ENABLE_GNOMAD_LOOKUP=true
 **Live run log (ministral-3:14b) — with focused sub-queries and per-subquery reranking:**
 ```
 [STARTING LANGGRAPH] Query: What is the clinical significance of rs879254116
-  in BRCA1, which ACMG pathogenicity criteria apply, and what cancer
-  screening protocol should the patient follow according to NCCN guidelines.
-  Also confirm the ClinGen expert panel validity for BRCA1.
+  in BRCA1 and what cancer screening protocol should the patient follow
+  according to NCCN guidelines. Also confirm the ClinGen expert panel
+  validity for BRCA1.
 
-[Decomposer] ACMG sub-query: ACMG pathogenicity criteria variant
-  classification rules PVS1 PS1 PS2 PS3 PS4 PM1 PM2...
 [Decomposer] Screening sub-query: NCCN cancer screening surveillance
   mammography MRI risk-reducing prophylactic salpingo-oophorectomy BRCA1...
 
@@ -933,13 +901,6 @@ PostgreSQL connection pool initialised (min=2, max=10)
 [ClinGen] 1 record(s) for BRCA1
   symbol=BRCA1 | validity=True | actionability=True | curated=08/29/2024
 
-[MultiQuery] ACMG expansion — 3 targeted queries (JSON schema):
-  • ACMG PVS1 criteria loss of function variants null alleles
-  • ACMG PP3 PP4 moderate pathogenic evidence computational prediction
-  • ACMG BS1 BS2 BS3 benign evidence population frequency gnomAD
-4 queries × 15 results = 35 unique chunks
-[PDF] Reranked 35 chunks against: ACMG pathogenicity criteria PVS1...
-
 [MultiQuery] Screening expansion — 3 targeted queries (JSON schema):
   • BRCA1/2 carriers NCCN guidelines mammography MRI surveillance ages
   • risk-reducing salpingo-oophorectomy (RRSO) timing mastectomy
@@ -947,33 +908,25 @@ PostgreSQL connection pool initialised (min=2, max=10)
 4 queries × 15 results = 30 unique chunks
 [PDF] Reranked 30 chunks against: NCCN cancer screening surveillance...
 
-[CRAG] Grading 48 PDF chunks:    ← total from both sub-queries
+[CRAG] Grading 30 PDF chunks:
   0.824 [CORRECT]  BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT
   0.745 [CORRECT]  NCCN Guidelines Version 3.2026...
   0.699 [CORRECT]  Bilateral Salpingo-Oophorectomy
-  0.601 [CORRECT]  ACMG_2015 page 33 — Table 3 Criteria for Classifying...
-  0.465 [CORRECT]  ACMG_2015 page 10 — PM1–6, PP1–5 weight definitions
-  0.440 [CORRECT]  ACMG_2015 page 36 — Table 5 Rules for Combining Criteria
-  ...                                   ← 9 additional CORRECT chunks
+  ...                                   ← additional CORRECT chunks
   0.009 [INCORRECT] → dropped
 
-[CRAG] Kept 37 chunks | Dropped 11 INCORRECT chunks
+[CRAG] Kept 22 chunks | Dropped 8 INCORRECT chunks
 
-Calling Ollama [ministral-3:14b] (3 DB + 12 PDF chunks)
-Draft JSON generated (4016 chars)
-
-  ACMG output (definitions, not applied):
-  • PVS1: Null variant in a gene where LoF is known mechanism of disease.
-  • PM2: Absent from controls in population databases.
-  • PP5: Reputable source classifies the variant as pathogenic.
+Calling Ollama [ministral-3:14b] (3 DB + 10 PDF chunks)
+Draft JSON generated (3200 chars)
 
   Screening output (BRCA1-specific only):
   • Annual breast MRI + mammography starting at age 25-29
   • Risk-reducing salpingo-oophorectomy between ages 35-40
   • ❌ NO colonoscopy (table row isolation prevented cross-gene slippage)
 
-LLM Critic finished. Length: 3217 → 3246
-[Citation] Verified DB chunks: 3 | Verified PDF chunks: 12 → confidence: high
+LLM Critic finished. Length: 2800 → 2830
+[Citation] Verified DB chunks: 3 | Verified PDF chunks: 10 → confidence: high
 [LANGGRAPH FINISHED] Confidence: high
 ```
 
@@ -983,13 +936,13 @@ LLM Critic finished. Length: 3217 → 3246
 
 **Completed:**
 - [x] PostgreSQL schema + ClinVar bulk ingestion with MD5 verification
-- [x] pgvector setup + ACMG/NCCN document indexing (dual-parser: PyMuPDF + Docling)
+- [x] pgvector setup + NCCN document indexing (Docling table-aware parser)
 - [x] Query decomposition — keyword routing to typed SubQuery list
 - [x] LangGraph 7-node DAG with parallel Send-based fan-out
 - [x] Multi-query expansion with per-category prompt templates
 - [x] BGE cross-encoder reranking (`BAAI/bge-reranker-large`)
 - [x] CRAG evaluator with empirically tuned thresholds (0.05 / 0.01)
-- [x] gnomAD v4 GraphQL client + BA1/PM2 rule application
+- [x] gnomAD v4 GraphQL client + BA1/PM2 deterministic annotation
 - [x] ClinGen REST API client + gene symbol extraction
 - [x] JSON-schema-constrained generation (ClinicalResponse Pydantic schema)
 - [x] Citation manifest injection (prevents hallucinated references)
@@ -999,12 +952,12 @@ LLM Critic finished. Length: 3217 → 3246
 - [x] gnomAD opt-out flag for air-gapped deployments
 - [x] **Focused sub-query text** — each sub-query gets topic-specific search text (not full query)
 - [x] **Per-subquery reranking** — chunks reranked against their own topic before CRAG
-- [x] **Anti-hallucination guardrails** (Rules 5–7):
+- [x] **Anti-hallucination guardrails** (Rules 5–6):
   - Rule 5: Never invent variant biology (frameshift/missense/de novo/computational)
   - Rule 6: Table row isolation — verify gene name in every NCCN table row
-  - Rule 7: ACMG definition-only reporting — report definitions, don't apply criteria
 - [x] **ClinGen validity field** in ClinicalResponse schema
 - [x] **Screening/protocol mutual exclusion** — prevents cross-category retrieval noise
+- [x] **ACMG removal** — eliminated LLM-interpreted criteria to prevent clinical hallucinations; BA1/PM2 handled deterministically via gnomAD
 
 **In progress / planned:**
 - [ ] Full unit test suite (test files stubbed)

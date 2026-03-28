@@ -3,22 +3,17 @@ from app.pipeline.retrieval.reranker import RetrievedChunk
 
 def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChunk]) -> str:
     # Keywords that UNIQUELY identify each source category
-    # IMPORTANT: Do NOT include generic clinical words like 'pathogenic'/'benign' in Clinvar
-    # Because those words appear everywhere and cause ACMG citations to be misclassified
     category_keywords = {
         "Clinvar": [r'\bclinvar\b', r'\bclassified as\b', r'\brs\d+\b', r'\bclinical significance\b'],
-        #           ↑ removed 'pathogenic' and 'benign' — they appear in ALL clinical text
-        #           ↑ kept rsID pattern (very specific to ClinVar)
         "ClinGen": [r'\bclingen\b', r'\bexpert panel\b', r'\bgene-disease validity\b', r'\bactionability\b'],
         "gnomAD":  [r'\bgnomad\b', r'\bba1\b', r'\ballele.?frequency\b', r'\bpopulation frequency\b', r'\babsent from controls\b'],
-        "ACMG":    [r'\bPM\d\b', r'\bPS\d\b', r'\bPVS\d\b', r'\bPP\d\b', r'\bBS\d\b', r'\bBA\d\b', r'\bBP\d\b', r'\bcriteria\b', r'\bacmg\b'],
-        #           ↑ ACMG criteria codes are very specific — PM1, PS3, PVS1 etc. kept
         "NCCN":    [r'\bnccn\b', r'\bscreening\b', r'\bmastectomy\b', r'\bsurveillance\b', r'\bmri\b', r'\bmammography\b', r'\bprotocol\b']
     }
 
+
     # ── Build: source → SET of all valid references (not just the first one) ──
     # Old code used first-wins: if source already in dict, skip all subsequent chunks.
-    # This collapsed all ACMG page refs to page 3 regardless of what was actually cited.
+    # This collapsed all page refs to a single page regardless of what was actually cited.
     source_to_refs: dict[str, set] = {}
     source_first_ref: dict[str, str] = {}  # fallback: first ref seen per source
     for chunk in used_chunks:
@@ -38,8 +33,6 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
 
         # ── GUARD: If the LLM cited a source that actually EXISTS in our chunks, ──
         # trust the source identity and only fix the reference if it's wrong.
-        # This prevents the enforcer from "correcting" ACMG → ClinVar when
-        # the text around the citation says "pathogenic" (a generic clinical word).
         cited_source_lower = cited_source.lower()
         actual_source_match = None
         for known_lower, known_real in known_sources_lower.items():

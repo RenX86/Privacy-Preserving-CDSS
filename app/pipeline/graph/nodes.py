@@ -41,7 +41,7 @@ def retrieve_node(state: CDSSGraphState) -> dict:
                             trusted_chunks.append(RetrievedChunk(text=freq_text, source="gnomAD", reference=rsid))
                         else:
                             trusted_chunks.append(RetrievedChunk(
-                                text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. ACMG BA1 benign stand-alone rule does NOT apply. PM2 (absent from controls) MAY apply — requires manual review.",
+                                text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. BA1 benign stand-alone rule does NOT apply (variant is not common). Absence from population databases is noted (relevant to PM2 criterion — requires clinical review).",
                                 source="gnomAD",
                                 reference=rsid
                             ))
@@ -66,9 +66,7 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
 
     for sq in state["sub_queries"]:
         if sq.target == "vector_db":
-            if sq.query_type == "rule_retrieval":
-                results = multi_query_search(sq.text, top_k=15, category_filter="guideline")
-            elif sq.query_type == "protocol_retrieval":
+            if sq.query_type == "protocol_retrieval":
                 results = multi_query_search(sq.text, top_k=15, category_filter="protocol")
             elif sq.query_type == "screening_retrieval":
                 results = multi_query_search(sq.text, top_k=15, category_filter="screening_protocol")
@@ -79,11 +77,8 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
 
             # ── Per-subquery reranking ────────────────────────────────────────────
             # Rerank THIS batch against its own focused sub-query text.
-            # Previously all chunks were pooled and reranked against the
-            # full user query in evaluate_node — causing ACMG criteria
-            # tables to score 0.001 because the full query contains NCCN/
-            # screening/ClinGen terms that dilute the relevance signal.
-            # Now each batch is scored against its own topic.
+            # Each batch is scored against its own topic to avoid cross-topic
+            # relevance dilution.
             if batch:
                 batch = rerank_chunks(sq.text, batch)
                 print(f"  [PDF] Reranked {len(batch)} chunks against: {sq.text[:60]}...")
@@ -117,9 +112,7 @@ def evaluate_node(state: CDSSGraphState) -> dict:
         unique_candidates.sort(key=lambda c: c.score, reverse=True)
 
         # CRAG grading — chunks already have scores from per-subquery reranking.
-        # No re-reranking against the full query here. That was the root cause
-        # of ACMG tables scoring 0.001: the full query mentions NCCN/screening/
-        # ClinGen, which dilutes the ACMG relevance signal.
+        # No re-reranking against the full query here.
         evaluation = evaluate_chunks(query, unique_candidates)
         all_passing = evaluation["correct"] + evaluation["ambiguous"]
 
@@ -134,11 +127,6 @@ def evaluate_node(state: CDSSGraphState) -> dict:
             if source_counts.get(source, 0) < 6:
                 filtered_candidates.append(chunk)
                 source_counts[source] = source_counts.get(source, 0) + 1
-
-    # Forced ACMG fetch hack REMOVED — no longer needed.
-    # The root cause was that ACMG chunks were reranked against the full
-    # multi-topic query (score 0.001). Now they're reranked against the
-    # focused ACMG sub-query text in retrieve_pdf_node (score 0.1+).
 
     verified = trusted_chunks + filtered_candidates
     return {"verified_chunks": verified}

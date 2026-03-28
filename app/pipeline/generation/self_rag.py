@@ -4,7 +4,6 @@ import logging
 import ollama
 from pydantic import BaseModel, Field
 from app.config import settings
-from app.pipeline.generation.citation_enforcer import fix_hallucinated_citations
 
 log = logging.getLogger("cdss.self_rag")
 
@@ -40,20 +39,6 @@ class ClinicalResponse(BaseModel):
             "ClinGen expert panel summary from the ⚑ VARIANT DATABASE FACTS block. "
             "Report: gene-disease validity (True/False), actionability, dosage sensitivity, "
             "and date_last_curated. Leave as [] if no ClinGen entry is in the VARIANT DATABASE FACTS."
-        )
-    )
-    acmg_rules: list[ClinicalClaim] = Field(
-        description=(
-            "ACMG criteria DEFINITIONS from the guideline text in context. "
-            "For each criterion, report: (1) the criterion code, (2) its DEFINITION "
-            "copied from the ACMG guideline text, and (3) which database fact is relevant. "
-            "Example: 'PM2 is defined as: absent from controls in population databases "
-            "(ACMG 2015 Table 3). The gnomAD record shows this variant was not found, "
-            "which is relevant to this criterion.' "
-            "Do NOT conclude whether criteria apply — that requires clinical review. "
-            "Do NOT invent the variant type (frameshift, missense) unless the context "
-            "explicitly states it for this exact variant. "
-            "Do NOT claim computational predictions exist unless scores are in context."
         )
     )
     screening_protocol: list[ClinicalClaim] = Field(
@@ -143,13 +128,8 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         f"   NEVER write 'not described', 'not found', or 'if this were pathogenic'.\n"
         f"2. CITATIONS: copy the FULL '[Source: X, Reference: Y]' string from the manifest below.\n"
         f"   Do NOT use '[1]', '[3]', or any number as a citation. Numbers are not citations.\n"
-        f"   Every bullet in acmg_rules and screening_protocol MUST have at least one citation.\n"
-        f"3. ACMG rules: report the DEFINITION of each criterion from the guideline text.\n"
-        f"   Then state which database fact is RELEVANT — but do NOT conclude it applies.\n"
-        f"   Do NOT invent the variant's molecular type (frameshift, missense, splice).\n"
-        f"   Do NOT claim computational predictions exist unless actual scores are in context.\n"
-        f"   Do NOT confuse criteria codes: PM2 = absent from controls, PS2 = de novo.\n"
-        f"4. SCREENING TABLES: Before extracting any protocol row, verify the gene name\n"
+        f"   Every bullet in screening_protocol MUST have at least one citation.\n"
+        f"3. SCREENING TABLES: Before extracting any protocol row, verify the gene name\n"
         f"   in the leftmost column matches the query gene. Do NOT include screening from\n"
         f"   other genes' rows (e.g. colonoscopy from MLH1 rows for a BRCA1 query).\n\n"
         f"{reference_manifest}"
@@ -195,19 +175,6 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                     lines.append(f"* {text}")
                 lines.append("")
 
-            if data.get("acmg_rules"):
-                lines.append("**ACMG Pathogenicity Criteria**")
-                for rule in data["acmg_rules"]:
-                    text  = rule.get("text", "").rstrip()
-                    cites = _render_citations(rule.get("citations", []))
-                    if cites and cites not in text:
-                        text = f"{text} {cites}"
-                    # Skip bare criterion codes with no explanation
-                    if len(text.split()) <= 2:
-                        log.debug(f"Skipping bare ACMG code: {text!r}")
-                        continue
-                    lines.append(f"* {text}")
-                lines.append("")
 
             if data.get("screening_protocol"):
                 lines.append("**Cancer Screening Protocol**")
@@ -225,8 +192,6 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
             answer = raw_json
 
         print(f"\n--- PRE-ENFORCER ANSWER ---\n{answer}\n----------------\n")
-        answer = fix_hallucinated_citations(answer, verified_chunks)
-        print(f"\n--- POST-ENFORCER ANSWER ---\n{answer}\n----------------\n")
         return answer
 
     except Exception as e:

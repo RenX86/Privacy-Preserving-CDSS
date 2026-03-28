@@ -92,11 +92,11 @@ def read_and_scrub_file(filepath: str, parser: str) -> str | list:
 
         else:
             print(f"   [Router] PyMuPDF4LLM (page-chunk) parser...")
-            # page_chunks=True returns one dict per page — fixes the 2-section problem
-            # caused by ACMG journal PDFs having almost no font-size-based headers
+            # page_chunks=True returns one dict per page — avoids issues with
+            # journal PDFs that have minimal font-size-based headers
             page_chunks = pymupdf4llm.to_markdown(filepath, page_chunks=True)
 
-            # ── ACMG SCRUBBING (per page) ─────────────────────────────────────
+            # ── Journal PDF scrubbing (per page) ─────────────────────────────
             scrubbed = []
             for page in page_chunks:
                 text = page["text"]

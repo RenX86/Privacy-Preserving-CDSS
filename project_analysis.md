@@ -47,7 +47,6 @@ Privacy-Preserving-CDSS/
 │   └── static/{css/style.css, js/main.js}
 ├── docs/
 │   ├── manifest.json                    # Parser routing per document
-│   ├── guidelines/                      # ACMG_2015_v3.pdf
 │   ├── protocols/                       # NCCN Breast.pdf
 │   └── screening/                       # NCCN Genetic-Familial.pdf
 ├── tests/
@@ -175,20 +174,17 @@ class CDSSGraphState(TypedDict):
 flowchart TD
     Q["User Query"] --> V{"Contains rsID?<br/>(rs\\d+)"}
     V -->|Yes| SQ1["SubQuery(target=postgres, type=data_extraction)"]
-    Q --> A{"ACMG keywords?"}
-    A -->|Yes| SQ2["SubQuery(target=vector_db, type=rule_retrieval)"]
     Q --> S{"Screening keywords?"}
     Q --> P{"Protocol keywords?"}
     P -->|"Yes AND NOT screening"| SQ3["SubQuery(target=vector_db, type=protocol_retrieval)"]
     P -->|"Yes AND screening"| SKIP["Skipped (screening takes priority)"]
     S -->|Yes| SQ4["SubQuery(target=vector_db, type=screening_retrieval)"]
     Q --> CL{"ClinGen keywords?"}
-    CL -->|Yes| SQ5["SubQuery(target=clingen, type=rule_retrieval)"]
+    CL -->|Yes| SQ5["SubQuery(target=clingen, type=clingen_lookup)"]
     Q --> NONE{"No matches?"}
-    NONE -->|Fallback| SQ6["SubQuery(target=vector_db, type=rule_retrieval)"]
+    NONE -->|Fallback| SQ6["SubQuery(target=vector_db, type=general)"]
 
     style SQ1 fill:#e67e22,color:#fff
-    style SQ2 fill:#3498db,color:#fff
     style SQ3 fill:#9b59b6,color:#fff
     style SQ4 fill:#27ae60,color:#fff
     style SQ5 fill:#e74c3c,color:#fff
@@ -200,7 +196,6 @@ flowchart TD
 | Category | Target | Keywords (sample) |
 |----------|--------|-------------------|
 | Variant IDs | [postgres](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/retrieval/reranker.py#45-59) | `rs\d+`, `NM_\d+`, `NP_\d+` |
-| ACMG | `vector_db` (guideline) | `acmg`, `pathogenic`, `pvs1`, `criteria` |
 | Protocol | `vector_db` (protocol) | `chemotherapy`, `radiotherapy`, `neoadjuvant`, `treatment regimen` |
 | Screening | `vector_db` (screening_protocol) | `nccn`, `screening`, `surveillance`, `rrso`, `hereditary` |
 | ClinGen | [clingen](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/retrieval/reranker.py#85-123) API | [clingen](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/retrieval/reranker.py#85-123), `gene validity`, `expert panel` |
@@ -314,8 +309,8 @@ flowchart TD
     SP["build_system_prompt()<br/>(guardrails.py)"] --> OLLAMA
 
     PROMPT --> OLLAMA["ollama.chat()<br/>format=ClinicalResponse.model_json_schema()"]
-    OLLAMA --> JSON["JSON: {summary, clingen_validity,<br/>acmg_rules, screening_protocol}"]
-    JSON --> RENDER["Render to markdown sections:<br/>**Clinical Summary**, **ACMG**, etc."]
+    OLLAMA --> JSON["JSON: {summary, clingen_validity,<br/>screening_protocol}"]
+    JSON --> RENDER["Render to markdown sections:<br/>**Clinical Summary**, **Screening**, etc."]
     RENDER --> FIX["fix_hallucinated_citations()"]
     FIX --> DRAFT["draft_answer"]
 
@@ -328,7 +323,6 @@ flowchart TD
 class ClinicalResponse(BaseModel):
     summary: ClinicalClaim             # variant classification + population freq
     clingen_validity: list[ClinicalClaim]  # gene-disease validity from ClinGen
-    acmg_rules: list[ClinicalClaim]    # applicable ACMG pathogenicity criteria
     screening_protocol: list[ClinicalClaim]  # NCCN screening/surveillance
 ```
 
@@ -377,7 +371,7 @@ flowchart TD
 
 1. Parse all `[Source: X, Reference: Y]` in the answer text
 2. If cited source **exists** in retrieved chunks → trust source, only fix reference
-3. If cited source is **unknown** → score surrounding text against keyword dictionaries (`Clinvar`, `ClinGen`, `gnomAD`, `ACMG`, `NCCN`) → remap to correct source (requires ≥2 keyword hits)
+3. If cited source is **unknown** → score surrounding text against keyword dictionaries (`Clinvar`, `ClinGen`, `gnomAD`, `NCCN`) → remap to correct source (requires ≥2 keyword hits)
 
 ---
 
@@ -402,7 +396,7 @@ flowchart TD
     DISC["discover_documents()<br/>reads manifest.json"] --> ROUTE{"Parser?"}
 
     ROUTE -->|docling| DOC["Docling: batch PDF conversion<br/>(10 pages at a time)<br/>+ NCCN boilerplate scrubbing"]
-    ROUTE -->|pymupdf| MU["PyMuPDF4LLM: page_chunks=True<br/>+ ACMG journal scrubbing"]
+    ROUTE -->|pymupdf| MU["PyMuPDF4LLM: page_chunks=True<br/>+ journal scrubbing"]
     ROUTE -->|txt| TXT["Plain text read"]
 
     DOC --> SPLIT1["table_aware_split()<br/>MarkdownHeaderSplitter + table isolation"]
@@ -423,7 +417,7 @@ flowchart TD
 
 | Subfolder | Category DB Value | Parser | Documents |
 |-----------|------------------|--------|-----------|
-| `docs/guidelines/` | `guideline` | pymupdf | ACMG 2015 v3 |
+| `docs/_archive/` | *(removed)* | *(archived)* | ACMG 2015 v3 (no longer indexed) |
 | `docs/protocols/` | `protocol` | docling | NCCN Breast v2 2026 |
 | `docs/screening/` | `screening_protocol` | docling | NCCN Genetic/Familial High-Risk |
 
@@ -450,8 +444,8 @@ erDiagram
 
     medical_documents {
         SERIAL id PK
-        VARCHAR source "e.g. ACMG_2015"
-        VARCHAR category "guideline|protocol|screening_protocol"
+        VARCHAR source "e.g. NCCN_Breast_v2_2026"
+        VARCHAR category "protocol|screening_protocol"
         VARCHAR gene
         TEXT chunk_text
         VECTOR embedding "768-dim (pgvector)"

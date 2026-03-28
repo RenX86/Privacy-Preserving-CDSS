@@ -12,11 +12,18 @@ def test_rsid_produces_postgres_subquery():
     assert "data_extraction" in types
 
 
-def test_acmg_keyword_produces_rule_retrieval():
-    """ACMG keyword should trigger a vector_db rule_retrieval sub-query."""
+def test_acmg_keywords_no_longer_produce_rule_retrieval():
+    """ACMG keywords should NOT produce a vector_db rule_retrieval sub-query (ACMG removed)."""
     subs = decompose_query("Which ACMG criteria classify BRCA1 as pathogenic?")
-    matches = [sq for sq in subs if sq.target == "vector_db" and sq.query_type == "rule_retrieval"]
-    assert len(matches) >= 1
+    rule_matches = [sq for sq in subs if sq.target == "vector_db" and sq.query_type == "rule_retrieval"]
+    assert len(rule_matches) == 0, "ACMG keywords should no longer trigger rule_retrieval"
+
+
+def test_fallback_uses_general_query_type():
+    """When no keywords match, the fallback sub-query should use query_type='general'."""
+    subs = decompose_query("tell me about this variant")
+    fallback = [sq for sq in subs if sq.query_type == "general"]
+    assert len(fallback) >= 1, "Fallback should use query_type='general'"
 
 
 def test_screening_keyword_produces_screening_retrieval():
@@ -55,10 +62,11 @@ def test_clinvar_mention_does_not_trigger_clingen():
 
 
 def test_empty_query_returns_fallback():
-    """An empty or unrecognised query should produce a default vector_db fallback."""
+    """An empty or unrecognised query should produce a default vector_db fallback with general type."""
     subs = decompose_query("tell me something interesting")
     assert len(subs) >= 1
     assert subs[0].target == "vector_db"
+    assert subs[0].query_type == "general"
 
 
 def test_multiple_rsids_produce_multiple_subqueries():
