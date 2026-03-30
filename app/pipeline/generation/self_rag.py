@@ -31,14 +31,20 @@ class ClinicalResponse(BaseModel):
             "Report the variant's clinical_significance EXACTLY as it appears in the "
             "⚑ VARIANT DATABASE FACTS block (e.g. 'Pathogenic', 'Likely pathogenic', 'VUS'). "
             "Do NOT say the variant is unclassified if it appears in the VARIANT DATABASE FACTS. "
-            "Include gnomAD allele frequency if present. Cite only from the CITATION MANIFEST."
+            "Include gnomAD allele frequency if present. "
+            "Do NOT add disease associations or cancer risk statements from general knowledge. "
+            "Only state facts that appear verbatim in the context. "
+            "Cite only from the CITATION MANIFEST."
         )
     )
     clingen_validity: list[ClinicalClaim] = Field(
         description=(
             "ClinGen expert panel summary from the ⚑ VARIANT DATABASE FACTS block. "
             "Report: gene-disease validity (True/False), actionability, dosage sensitivity, "
-            "and date_last_curated. Leave as [] if no ClinGen entry is in the VARIANT DATABASE FACTS."
+            "and date_last_curated. "
+            "Report these as GENE-LEVEL facts (e.g. 'BRCA1 has gene-disease validity: True'). "
+            "Do NOT infer variant-level actionability from gene-level ClinGen data. "
+            "Leave as [] if no ClinGen entry is in the VARIANT DATABASE FACTS."
         )
     )
     screening_protocol: list[ClinicalClaim] = Field(
@@ -169,6 +175,8 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 lines.append("**ClinGen Expert Panel Validity**")
                 for item in data["clingen_validity"]:
                     text  = item.get("text", "").rstrip()
+                    # Strip leading list prefixes the LLM may add inside the JSON text field
+                    text = re.sub(r'^[-•*]\s+', '', text)
                     cites = _render_citations(item.get("citations", []))
                     if cites and cites not in text:
                         text = f"{text} {cites}"
@@ -180,6 +188,8 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
                 lines.append("**Cancer Screening Protocol**")
                 for prot in data["screening_protocol"]:
                     text  = prot.get("text", "").rstrip()
+                    # Strip leading list prefixes the LLM may add inside the JSON text field
+                    text = re.sub(r'^[-•*]\s+', '', text)
                     cites = _render_citations(prot.get("citations", []))
                     if cites and cites not in text:
                         text = f"{text} {cites}"
@@ -198,52 +208,3 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         log.error(f"Ollama error during generation: {e}")
         return SAFE_FAILURE_MESSAGE
 
-
-def self_rag_critic(query: str, draft_answer: str, verified_chunks: list[RetrievedChunk]) -> str:
-    """Single-pass LLM critic. Reverts to draft if citations are dropped."""
-    log.info("Running LLM-based critic...")
-
-    if not verified_chunks:
-        return draft_answer
-
-    context_block = build_context_block(verified_chunks)
-
-    critic_prompt = (
-        f"You are a strict Clinical Auditor verifying a generated clinical summary.\n\n"
-        f"CONTEXT:\n{context_block}\n\n"
-        f"DRAFT SUMMARY TO AUDIT:\n{draft_answer}\n\n"
-        f"AUDIT RULES:\n"
-        f"1. WRONG GENE DATA: Did the draft assign the wrong age, surgery, or protocol for this gene?\n"
-        f"2. HALLUCINATIONS: Remove any claim not supported by the context.\n"
-        f"3. CITATIONS: Every sentence must end with [Source: X, Reference: Y] from the context.\n\n"
-        f"INSTRUCTIONS:\n"
-        f"- Rewrite only what is factually wrong. Do not shorten unnecessarily.\n"
-        f"- Preserve ALL [Source: X, Reference: Y] citation tags. Do NOT remove them.\n"
-        f"- Output ONLY the corrected clinical summary. No audit notes, no preamble."
-    )
-
-    try:
-        response = ollama.chat(
-            model=settings.LOCAL_LLM_MODEL,
-            messages=[
-                {"role": "system", "content": "You are a clinical auditor. Output only the corrected summary text."},
-                {"role": "user",   "content": critic_prompt}
-            ]
-        )
-        final_answer = _strip_thinking(response.message.content)
-        log.info(f"LLM Critic finished. Length: {len(draft_answer)} -> {len(final_answer)}")
-
-        # Safety net: revert if the critic dropped citations
-        draft_cite_count = draft_answer.count("[Source:")
-        final_cite_count = final_answer.count("[Source:")
-        if draft_cite_count > 0 and final_cite_count < draft_cite_count:
-            log.warning(
-                f"Critic dropped citations ({draft_cite_count} -> {final_cite_count}). Reverting to draft."
-            )
-            return draft_answer
-
-        return final_answer
-
-    except Exception as e:
-        log.error(f"Ollama error during critic: {e}")
-        return draft_answer

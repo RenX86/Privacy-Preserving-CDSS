@@ -11,7 +11,7 @@ from app.pipeline.retrieval.multi_query import multi_query_search
 from app.pipeline.retrieval.crag_evaluator import evaluate_chunks
 from app.pipeline.retrieval.reranker import rerank_chunks
 from app.api.schemas import Citation
-from app.pipeline.generation.self_rag import generate_answer, self_rag_critic
+from app.pipeline.generation.self_rag import generate_answer
 from app.pipeline.generation.citation_enforcer import extract_citations, fix_hallucinated_citations
 
 def decompose_node(state: CDSSGraphState) -> dict:
@@ -139,18 +139,9 @@ def generate_node(state: CDSSGraphState) -> dict:
     draft = generate_answer(query, verified)
     return {"draft_answer": draft}
 
-def critic_node(state: CDSSGraphState) -> dict:
-
-    query = state["query"]
-    draft = state["draft_answer"]
-    verified = state.get("verified_chunks", [])
-
-    final = self_rag_critic(query, draft, verified)
-    return {"final_answer": final}
-
 def citation_node(state: CDSSGraphState) -> dict:
 
-    final = state["final_answer"]
+    final = state["draft_answer"]
     verified_chunks = state.get("verified_chunks", [])
     trusted_chunks = state.get("trusted_chunks", [])
 

@@ -9,7 +9,6 @@ class RetrievedChunk:
         self.source = source
         self.reference = reference
         self.score = score
-        self._force_include = True
 
     def __repr__(self):
         return f"RetrievedChunk(source={self.source}, score={self.score:.3f})"

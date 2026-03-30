@@ -35,7 +35,7 @@ Privacy-Preserving-CDSS/
 │       │   └── crag_evaluator.py        # Corrective RAG: score-based grading
 │       ├── generation/
 │       │   ├── guardrails.py            # System prompt + context builder
-│       │   ├── self_rag.py              # JSON-schema-constrained generation + critic
+│       │   ├── self_rag.py              # JSON-schema-constrained generation
 │       │   └── citation_enforcer.py     # Hallucination fix + citation extraction
 │       └── sources/
 │           ├── postgres_client.py       # ClinVar SQL lookups (rsid / gene)
@@ -116,8 +116,7 @@ graph LR
     DBR --> E["Evaluator"]
     PDFR --> E
     E --> G["Generator"]
-    G --> C["Critic"]
-    C --> CE["Citation_Enforcer"]
+    G --> CE["Citation_Enforcer"]
     CE --> END_(("END"))
 
     style D fill:#4a90d9,color:#fff
@@ -125,7 +124,6 @@ graph LR
     style PDFR fill:#e67e22,color:#fff
     style E fill:#27ae60,color:#fff
     style G fill:#8e44ad,color:#fff
-    style C fill:#c0392b,color:#fff
     style CE fill:#2c3e50,color:#fff
 ```
 
@@ -138,8 +136,7 @@ graph LR
 | 3 | **PDF_Retriever** | [nodes.py:61](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#L61-L79) | `sub_queries` | `candidate_chunks` | Multi-query expansion → pgvector search per category |
 | 4 | **Evaluator** | [nodes.py:82](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#L82-L126) | `candidate_chunks`, `trusted_chunks`, [query](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/api/router.py#13-32), [gene](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#128-135) | `verified_chunks` | Deduplicate → rerank → CRAG grade → gene-filter NCCN → merge |
 | 5 | **Generator** | [nodes.py:128](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#L128-L134) | [query](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/api/router.py#13-32), `verified_chunks` | `draft_answer` | JSON-schema-constrained Ollama call → structured clinical response |
-| 6 | **Critic** | [nodes.py:136](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#L136-L143) | [query](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/api/router.py#13-32), `draft_answer`, `verified_chunks` | `final_answer` | LLM auditor verifies ages, genes, citations |
-| 7 | **Citation_Enforcer** | [nodes.py:145](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#L145-L176) | `final_answer`, `verified_chunks`, `trusted_chunks`, `candidate_chunks` | `final_answer`, [citations](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/generation/citation_enforcer.py#83-100), `confidence` | Fix hallucinated citations, extract citation list, compute confidence |
+| 6 | **Citation_Enforcer** | [nodes.py:140](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/graph/nodes.py#L140-L176) | `draft_answer`, `verified_chunks`, `trusted_chunks`, `candidate_chunks` | `final_answer`, [citations](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/generation/citation_enforcer.py#83-100), `confidence` | Fix hallucinated citations, extract citation list, compute confidence |
 
 ---
 
@@ -159,7 +156,7 @@ class CDSSGraphState(TypedDict):
     verified_chunks: list[RetrievedChunk]   # Evaluator output (merged + filtered)
     draft_answer: str                       # Generator output
 
-    final_answer: str                       # Critic → Citation_Enforcer output
+    final_answer: str                       # Citation_Enforcer output
     citations: list[Citation]               # extracted inline citations
     confidence: str                         # "high" | "medium" | "low"
 ```
@@ -246,13 +243,11 @@ flowchart TD
 flowchart TD
     SQ["SubQuery(target=vector_db)"] --> QT{"query_type?"}
 
-    QT -->|rule_retrieval| MQGD["multi_query_search(category='guideline')"]
     QT -->|protocol_retrieval| MQPR["multi_query_search(category='protocol')"]
     QT -->|screening_retrieval| MQSC["multi_query_search(category='screening_protocol')"]
-    QT -->|other| MQALL["multi_query_search(no filter)"]
+    QT -->|general| MQALL["multi_query_search(no filter)"]
 
-    MQGD --> EXP["expand_queries() → Ollama LLM<br/>(JSON schema constrained)"]
-    MQPR --> EXP
+    MQPR --> EXP["expand_queries() → Ollama LLM<br/>(JSON schema constrained)"]
     MQSC --> EXP
     MQALL --> EXP
 
@@ -265,7 +260,7 @@ flowchart TD
 
 ### Multi-Query Expansion Detail
 
-1. **Prompt selection** — different system prompts for `screening_retrieval`, `protocol_retrieval`, and `rule_retrieval` ([multi_query.py:58-103](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/retrieval/multi_query.py#L58-L103))
+1. **Prompt selection** — different system prompts for `screening_retrieval`, `protocol_retrieval`, and `general` ([multi_query.py:58-103](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/retrieval/multi_query.py#L58-L103))
 2. **JSON-schema constrained generation** — `ollama.chat(format=ExpandedQueries.model_json_schema())` forces the LLM to output `{"queries": [...]}` with no preamble
 3. **Preamble stripping** — a safety net [_clean_variants()](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/retrieval/multi_query.py#38-56) strips numbered lines, bullet prefixes
 4. **Search** — `original_query` + `n` variants each search pgvector with cosine similarity, filtered by `category`
@@ -330,26 +325,9 @@ Each [ClinicalClaim](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving
 
 ---
 
-## 10. Critic — LLM-Based Auditor
-
-```mermaid
-flowchart LR
-    DRAFT["draft_answer"] --> CRITIC["Ollama LLM Critic<br/>(free-form, no JSON schema)"]
-    CTX2["verified_chunks<br/>context block"] --> CRITIC
-    CRITIC --> AUDIT["Checks: wrong ages,<br/>wrong genes, hallucinations,<br/>missing citations"]
-    AUDIT --> FINAL["final_answer<br/>(corrected text)"]
-
-    style FINAL fill:#c0392b,color:#fff
-```
-
-The critic prompt ([self_rag.py:125-143](file:///c:/Users/Master/Documents/GitHub/Privacy-Preserving-CDSS/app/pipeline/generation/self_rag.py#L125-L143)) enforces:
-- **Fatal error detection**: wrong age/surgery for a gene
-- **Hallucination removal**: claims not in context
-- **Citation preservation**: every sentence must end with `[Source: X, Reference: Y]`
-
 ---
 
-## 11. Citation Enforcer & Confidence Scoring
+## 10. Citation Enforcer & Confidence Scoring
 
 ```mermaid
 flowchart TD
@@ -396,15 +374,12 @@ flowchart TD
     DISC["discover_documents()<br/>reads manifest.json"] --> ROUTE{"Parser?"}
 
     ROUTE -->|docling| DOC["Docling: batch PDF conversion<br/>(10 pages at a time)<br/>+ NCCN boilerplate scrubbing"]
-    ROUTE -->|pymupdf| MU["PyMuPDF4LLM: page_chunks=True<br/>+ journal scrubbing"]
     ROUTE -->|txt| TXT["Plain text read"]
 
     DOC --> SPLIT1["table_aware_split()<br/>MarkdownHeaderSplitter + table isolation"]
-    MU --> SPLIT2["Direct page-chunk sections"]
     TXT --> SPLIT3["semantic_markdown_split()"]
 
     SPLIT1 --> CHILD["RecursiveCharacterTextSplitter<br/>(800 chars, 100 overlap)"]
-    SPLIT2 --> CHILD
     SPLIT3 --> CHILD
 
     CHILD --> EMBED["embed_text() → 768-dim vector"]
@@ -470,14 +445,13 @@ sequenceDiagram
     participant PDFR as PDF_Retriever
     participant E as Evaluator
     participant G as Generator
-    participant C as Critic
     participant CE as Citation_Enforcer
 
     U->>API: POST {query: "rs80357713 BRCA1 screening..."}
     API->>D: invoke({query})
 
     Note over D: extract_gene → "BRCA1"
-    Note over D: keyword match → 3 SubQueries:<br/>1. postgres/data_extraction (rs80357713)<br/>2. vector_db/screening_retrieval (NCCN)<br/>3. vector_db/rule_retrieval (fallback)
+    Note over D: keyword match → 2 SubQueries:<br/>1. postgres/data_extraction (rs80357713)<br/>2. vector_db/screening_retrieval (NCCN)
 
     par DB_Retriever (parallel)
         D->>DBR: sub_queries + gene
@@ -499,19 +473,15 @@ sequenceDiagram
 
     E->>G: verified_chunks + query
     G->>G: build_context_block() → system prompt
-    G->>G: Ollama JSON-schema gen → ClinicalResponse
+    G-->>G: Ollama JSON-schema gen → ClinicalResponse
     Note over G: draft_answer (markdown)
 
-    G->>C: draft + verified_chunks
-    C->>C: LLM Critic audits ages/genes/citations
-    Note over C: final_answer (corrected)
+    G-->>CE: draft_answer + all chunks
+    CE-->>CE: fix_hallucinated_citations()
+    CE-->>CE: extract_citations()
+    CE-->>CE: confidence = "high" (2 DB + PDF)
 
-    C->>CE: final_answer + all chunks
-    CE->>CE: fix_hallucinated_citations()
-    CE->>CE: extract_citations()
-    CE->>CE: confidence = "high" (2 DB + PDF)
-
-    CE->>API: {final_answer, citations, confidence}
+    CE-->>API: {final_answer, citations, confidence}
     API->>U: QueryResponse JSON
 ```
 
@@ -527,7 +497,7 @@ sequenceDiagram
 | **Embeddings** | SentenceTransformer (768-dim) | Document & query embedding |
 | **Reranking** | `BAAI/bge-reranker-large` (CrossEncoder) | Precision re-ranking of candidate chunks |
 | **Database** | PostgreSQL 17 + pgvector | Dual-store: structured SQL + vector similarity |
-| **PDF Parsing** | Docling (tables) + PyMuPDF4LLM (text) | Layout-aware PDF → Markdown conversion |
+| **PDF Parsing** | Docling (table-aware) | Layout-aware PDF → Markdown conversion |
 | **Chunking** | LangChain `MarkdownHeaderTextSplitter` + `RecursiveCharacterTextSplitter` | Hierarchical → child chunk splitting |
 | **External APIs** | gnomAD GraphQL, ClinGen REST | Population frequency, gene validity |
 | **Config** | pydantic-settings + `.env` | Environment-based configuration |
@@ -539,8 +509,8 @@ sequenceDiagram
 
 1. **Hybrid RAG** — structured DB facts ("trusted") + unstructured PDF chunks ("candidates") merged at evaluation
 2. **Corrective RAG (CRAG)** — cross-encoder scoring with three grades (correct/ambiguous/incorrect) to filter low-quality chunks
-3. **Self-RAG** — JSON-schema-constrained generation ensures structured output; a second LLM pass (critic) validates clinical accuracy
-4. **Multi-Query Expansion** — dedicated prompt templates per document category (screening/protocol/guideline) to improve retrieval recall
+3. **Self-RAG** — JSON-schema-constrained generation ensures structured output
+4. **Multi-Query Expansion** — dedicated prompt templates per document category (screening/protocol) to improve retrieval recall
 5. **Citation Enforcement** — post-hoc hallucination detection using keyword dictionaries + source existence checks
 6. **Parallel Retrieval** — LangGraph fan-out: DB_Retriever and PDF_Retriever execute concurrently, merge at Evaluator
 7. **Privacy-Preserving** — all LLM inference runs locally via Ollama; no patient data leaves the system

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS variants (
 );
 
 -- ─── MEDICAL DOCUMENTS TABLE ──────────────────────────────────────────────────
--- Stores chunked ACMG/NCCN text with their vector embeddings (pgvector)
+-- Stores chunked NCCN guideline text with their vector embeddings (pgvector)
 
 CREATE TABLE IF NOT EXISTS medical_documents (
     id                     SERIAL PRIMARY KEY,

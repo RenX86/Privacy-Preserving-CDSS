@@ -24,14 +24,13 @@
 - [What It Does](#-what-it-does)
 - [System at a Glance](#-system-at-a-glance)
 - [Data Sources](#-data-sources--why-hybrid-rag)
-- [The 7-Node LangGraph Pipeline](#-the-7-node-langgraph-pipeline)
+- [The 6-Node LangGraph Pipeline](#-the-6-node-langgraph-pipeline)
   - [Node 1 — Decomposer](#node-1--decomposer)
   - [Node 2 — DB\_Retriever](#node-2--db_retriever)
   - [Node 3 — PDF\_Retriever](#node-3--pdf_retriever)
   - [Node 4 — Evaluator](#node-4--evaluator)
   - [Node 5 — Generator](#node-5--generator)
-  - [Node 6 — Critic](#node-6--critic)
-  - [Node 7 — Citation\_Enforcer](#node-7--citation_enforcer)
+  - [Node 6 — Citation\_Enforcer](#node-6--citation_enforcer)
 - [Offline Ingestion Pipelines](#-offline-ingestion-pipelines)
 - [Database Schema](#-database-schema)
 - [Tech Stack](#-tech-stack)
@@ -97,23 +96,22 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
        ▼                                        ▼
   clinvar_ingestion.py              ┌─── FastAPI (port 5656) ───────────────┐
   • Download + MD5 verify           │                                       │
-  • Filter: GRCh38, P/LP/B/LB       │   LangGraph 7-Node Pipeline           │
+  • Filter: GRCh38, P/LP/B/LB       │   LangGraph 6-Node Pipeline           │
   • Batch INSERT (1000/tx)          │                                       │
        │                            │  ① Decomposer                         │
        ▼                            │       ↓ fan-out (parallel)            │
   ┌──────────────┐  indexing.py     │  ② DB_Retriever ── ③ PDF_Retriever    │
   │  PostgreSQL  │◄── Docling       │       ↓ merge          ↓              │
-  │  + pgvector  │    PyMuPDF4LLM   │  ④ Evaluator ◄──────────────────────  │
+  │  + pgvector  │    Docling       │  ④ Evaluator ◄──────────────────────  │
   │              │                  │       ↓                               │
   │  variants    │    800-char      │  ⑤ Generator                          │
   │  table       │    chunks        │       ↓                               │
-  │              │                  │  ⑥ Critic                             │
+  │              │                  │  ⑥ Citation_Enforcer                  │
   │  medical_    │                  │       ↓                               │
-  │  documents   │                  │  ⑦ Citation_Enforcer                  │
-  │  (768-dim)   │                  │       ↓                               │
-  └──────────────┘                  │  QueryResponse (JSON)                 │
-         ▲                          └───────────────────────────────────────┘
-         │                                   │
+  │  documents   │                  │  QueryResponse (JSON)                 │
+  │  (768-dim)   │                  └───────────────────────────────────────┘
+  └─────────────────────────────────────────────┘
+         ▲                                   │
          │ Live calls (per query)             ▼
   ┌──────┴───────────────────────┐    answer + citations + confidence
   │  gnomAD v4  │  ClinGen REST  │
@@ -166,12 +164,12 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
 
 ---
 
-## ⚙️ The 7-Node LangGraph Pipeline
+## ⚙️ The 6-Node LangGraph Pipeline
 
 ```
                         ┌─────────────────────────┐
                         │   CDSSGraphState (shared │
-                        │   across all 7 nodes)    │
+                        │   across all 6 nodes)    │
                         │                          │
                         │  query: str              │
                         │  gene: Optional[str]     │
@@ -226,16 +224,10 @@ Variant rs879254116 in BRCA1 is classified as Pathogenic.
                   │          • JSON-schema constrained Ollama call
                   │          • Parse ClinicalResponse → markdown
                   ▼
-           ╔══════════════╗
-           ║   Node 6     ║  critic_node()
-           ║    Critic    ║  • LLM audit: ages, genes, citations
-           ╚══════╤═══════╝  • Safety net: revert if citations dropped
-                  │
-                  ▼
            ╔══════════════════╗
-           ║     Node 7       ║  citation_node()
+           ║     Node 6       ║  citation_node()
            ║Citation_Enforcer ║  • fix_hallucinated_citations()
-           ╚══════╤═══════════╝  • extract_citations()
+           ╚══════╤═══════╝  • extract_citations()
                   │              • Confidence scoring
                   ▼
                  END → QueryResponse{answer, citations, confidence}
@@ -543,7 +535,7 @@ A second LLM pass that audits the draft for clinical accuracy errors.
 Post-processes the final answer and computes the confidence score.
 
 ```
-  final_answer + verified_chunks
+  draft_answer + verified_chunks
         │
         ├─────────────────────────────────────────┐
         ▼                                         ▼
@@ -681,14 +673,14 @@ docs/manifest.json
 | Layer | Technology | Version | Role |
 |---|---|---|---|
 | **API** | FastAPI + Uvicorn | 0.131 / 0.41 | HTTP interface, Pydantic I/O validation |
-| **Orchestration** | LangGraph (StateGraph) | via langchain | 7-node DAG, parallel Send-based fan-out |
-| **LLM** | Ollama | 0.6.1 | Local inference — query expansion, generation, critic |
+| **Orchestration** | LangGraph (StateGraph) | via langchain | 6-node DAG, parallel Send-based fan-out |
+| **LLM** | Ollama | 0.6.1 | Local inference — query expansion, generation |
 | **Embeddings** | SentenceTransformer | 5.2.3 | BGE-base-en-v1.5 768-dim vectors |
 | **Reranking** | BAAI/bge-reranker-large | — | Cross-encoder relevance scoring |
 | **Database** | PostgreSQL 17 + pgvector | psycopg2 2.9.11 | Structured variants + vector similarity search |
 | **Connection pool** | psycopg2 ThreadedConnectionPool | — | min=2 / max=10 connections shared |
 | **PDF** | Docling | unpinned | Table-structure-aware PDF → Markdown |
-| **PDF (alt)** | PyMuPDF4LLM | — | Page-chunk PDF → Markdown |
+| **PDF** | Docling | — | Table-aware PDF → Markdown |
 | **Chunking** | LangChain text splitters | 1.2.10 | MarkdownHeader + Recursive (800 chars, 100 overlap) |
 | **External API 1** | gnomAD v4 GraphQL | httpx 0.28.1 | Allele frequency, BA1/PM2 annotations |
 | **External API 2** | ClinGen REST | httpx 0.28.1 | Gene validity, expert panel curation |
@@ -740,7 +732,7 @@ Privacy-Preserving-CDSS/
 │       │
 │       ├── generation/
 │       │   ├── guardrails.py       System prompt + ⚑ context block builder
-│       │   ├── self_rag.py         JSON-schema gen + manifest + critic + thinking strip
+│       │   ├── self_rag.py         JSON-schema gen + manifest + thinking strip
 │       │   └── citation_enforcer.py Hallucination fix + citation extraction
 │       │
 │       └── sources/
@@ -925,7 +917,6 @@ Draft JSON generated (3200 chars)
   • Risk-reducing salpingo-oophorectomy between ages 35-40
   • ❌ NO colonoscopy (table row isolation prevented cross-gene slippage)
 
-LLM Critic finished. Length: 2800 → 2830
 [Citation] Verified DB chunks: 3 | Verified PDF chunks: 10 → confidence: high
 [LANGGRAPH FINISHED] Confidence: high
 ```
@@ -938,7 +929,7 @@ LLM Critic finished. Length: 2800 → 2830
 - [x] PostgreSQL schema + ClinVar bulk ingestion with MD5 verification
 - [x] pgvector setup + NCCN document indexing (Docling table-aware parser)
 - [x] Query decomposition — keyword routing to typed SubQuery list
-- [x] LangGraph 7-node DAG with parallel Send-based fan-out
+- [x] LangGraph 6-node DAG with parallel Send-based fan-out
 - [x] Multi-query expansion with per-category prompt templates
 - [x] BGE cross-encoder reranking (`BAAI/bge-reranker-large`)
 - [x] CRAG evaluator with empirically tuned thresholds (0.05 / 0.01)
@@ -946,12 +937,6 @@ LLM Critic finished. Length: 2800 → 2830
 - [x] ClinGen REST API client + gene symbol extraction
 - [x] JSON-schema-constrained generation (ClinicalResponse Pydantic schema)
 - [x] Citation manifest injection (prevents hallucinated references)
-- [x] Self-RAG single-pass critic with citation safety net
-- [x] Thinking-mode stripping (`<think>` blocks)
-- [x] PostgreSQL connection pooling (ThreadedConnectionPool)
-- [x] gnomAD opt-out flag for air-gapped deployments
-- [x] **Focused sub-query text** — each sub-query gets topic-specific search text (not full query)
-- [x] **Per-subquery reranking** — chunks reranked against their own topic before CRAG
 - [x] **Anti-hallucination guardrails** (Rules 5–6):
   - Rule 5: Never invent variant biology (frameshift/missense/de novo/computational)
   - Rule 6: Table row isolation — verify gene name in every NCCN table row
@@ -959,13 +944,8 @@ LLM Critic finished. Length: 2800 → 2830
 - [x] **Screening/protocol mutual exclusion** — prevents cross-category retrieval noise
 - [x] **ACMG removal** — eliminated LLM-interpreted criteria to prevent clinical hallucinations; BA1/PM2 handled deterministically via gnomAD
 
-**In progress / planned:**
 - [ ] Full unit test suite (test files stubbed)
 - [ ] Systematic evaluation framework (Ragas/custom faithfulness metrics)
-- [ ] Self-query metadata filter (`construction/self_query.py`)
-- [ ] Text-to-SQL dynamic query builder (`construction/text_to_sql.py`)
-- [ ] Frontend UI (`frontend/`)
-- [ ] Multi-pass Self-RAG critic loop (currently single-pass)
 - [ ] gnomAD local cache (pre-fetch at index time, eliminate runtime external call)
 - [ ] Clinical validation with domain experts
 

@@ -20,6 +20,12 @@ gnomAD, and ClinGen. These are not hypothetical. They are verified database reco
 YOUR FIRST SENTENCE MUST BE (fill in from the facts block):
   "Variant [rsID] in [gene] is classified as [clinical_significance]."
 
+YOUR SUMMARY MUST ONLY contain facts directly stated in the VARIANT DATABASE FACTS block.
+Do NOT add disease associations, cancer risk statements, or clinical implications
+from your training data. If the ClinVar record says "Pathogenic" — report that classification.
+Do NOT write "confers elevated risk of breast, ovarian, and prostate cancers" unless
+that EXACT phrasing appears in the context.
+
 FORBIDDEN — never write these phrases if a variant record exists in the facts block:
   ✗ "not explicitly described in the provided context"
   ✗ "not listed in the context"
@@ -48,6 +54,14 @@ RULE 4 — IF NOT IN CONTEXT, SAY DATA UNAVAILABLE
 ══════════════════════════════════════════════════════
 Do not fill gaps with general medical knowledge. If a specific data point is not in the context,
 write "Data unavailable in retrieved context."
+
+EXAMPLES OF FORBIDDEN INFERENCES:
+  ✗ "The variant confers elevated risk of breast and ovarian cancers"
+    (This is general BRCA1 knowledge, not from the retrieved context)
+  ✗ "Variants classified as P/LP are recognized as clinically actionable"
+    (ClinGen reports gene-level actionability, not variant-level)
+  ✓ "ClinGen reports gene-disease validity: True, actionability: True for BRCA1"
+    (This is exactly what the ClinGen chunk says)
 
 ══════════════════════════════════════════════════════
 RULE 5 — DO NOT INVENT VARIANT BIOLOGY

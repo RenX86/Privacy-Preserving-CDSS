@@ -2,7 +2,7 @@ import os
 import re
 import psycopg2
 import json
-import pymupdf4llm
+
 from docling.document_converter import DocumentConverter
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -89,32 +89,6 @@ def read_and_scrub_file(filepath: str, parser: str) -> str | list:
             md_text = re.sub(r'(?im)^Discussion\s*$', '', md_text)
             md_text = re.sub(r'(?im)^UPDATES\s*$', '', md_text)
             return md_text
-
-        else:
-            print(f"   [Router] PyMuPDF4LLM (page-chunk) parser...")
-            # page_chunks=True returns one dict per page — avoids issues with
-            # journal PDFs that have minimal font-size-based headers
-            page_chunks = pymupdf4llm.to_markdown(filepath, page_chunks=True)
-
-            # ── Journal PDF scrubbing (per page) ─────────────────────────────
-            scrubbed = []
-            for page in page_chunks:
-                text = page["text"]
-                text = re.sub(r'(?i)Genet Med\..{0,100}?doi:.*?\n', '', text)
-                text = re.sub(r'Author [mM]anuscript\n?', '', text)
-                text = re.sub(r'HHS Public Access\n?', '', text)
-                text = re.sub(
-                    r'(?i)Users may view, print, copy.{0,200}?editorial_policies\n?',
-                    '', text, flags=re.DOTALL
-                )
-                text = text.strip()
-                if text:
-                    scrubbed.append({
-                        "text": text,
-                        "metadata": {"page": page.get("metadata", {}).get("page", "?")}
-                    })
-            # Return list of page dicts directly — no further splitting needed
-            return scrubbed
 
     elif ext == ".txt":
         with open(filepath, "r", encoding="utf-8") as f:
