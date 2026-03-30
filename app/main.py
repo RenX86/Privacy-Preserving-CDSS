@@ -17,8 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="Privacy Preserving CDSS",
-    description="A Hybrid RAG pipeline for clinical genomic queries",
-    version="1.0.0"
+    description="A Hybrid RAG pipeline for clinical genomic queries"
 )
 
 app.include_router(router)
