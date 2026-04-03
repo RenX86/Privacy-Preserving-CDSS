@@ -37,11 +37,11 @@ def retrieve_node(state: CDSSGraphState) -> dict:
                     if settings.ENABLE_GNOMAD_LOOKUP:
                         freq_data = get_allele_frequency(rsid)
                         if freq_data:
-                            freq_text = f"Population frequency for {rsid}: AF={freq_data['allele_frequency']:.6f}. {'BA1 rule APPLIES (common variant -> Benign).' if freq_data['ba1_applicable'] else 'Variant is rare in population.'}"
+                            freq_text = f"Population frequency for {rsid}: AF={freq_data['allele_frequency']:.6f}. {'Variant is common in population (AF >= 5%).' if freq_data['is_common'] else 'Variant is rare in population.'}"
                             trusted_chunks.append(RetrievedChunk(text=freq_text, source="gnomAD", reference=rsid))
                         else:
                             trusted_chunks.append(RetrievedChunk(
-                                text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. BA1 benign stand-alone rule does NOT apply (variant is not common). Absence from population databases is noted (relevant to PM2 criterion — requires clinical review).",
+                                text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. Variant is absent from population frequency data.",
                                 source="gnomAD",
                                 reference=rsid
                             ))
@@ -69,7 +69,7 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
             if sq.query_type == "protocol_retrieval":
                 results = multi_query_search(sq.text, top_k=15, category_filter="protocol")
             elif sq.query_type == "screening_retrieval":
-                results = multi_query_search(sq.text, top_k=15, category_filter="screening_protocol")
+                results = multi_query_search(sq.text, top_k=15, category_filter="screening")
             else:
                 results = multi_query_search(sq.text, top_k=15)
 

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     CLINGEN_API_URL: str
 
     # Set to false to disable live gnomAD lookups (privacy-sensitive environments).
-    # When disabled, the BA1/PM2 frequency note will be omitted from responses.
+    # When disabled, population frequency data will be omitted from responses.
     ENABLE_GNOMAD_LOOKUP: bool = True 
 
     class Config:

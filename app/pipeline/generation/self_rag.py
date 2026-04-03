@@ -40,9 +40,10 @@ class ClinicalResponse(BaseModel):
     clingen_validity: list[ClinicalClaim] = Field(
         description=(
             "ClinGen expert panel summary from the ⚑ VARIANT DATABASE FACTS block. "
-            "Report: gene-disease validity (True/False), actionability, dosage sensitivity, "
-            "and date_last_curated. "
-            "Report these as GENE-LEVEL facts (e.g. 'BRCA1 has gene-disease validity: True'). "
+            "USE THIS EXACT FORMAT: '[GENE]: gene-disease validity: [True/False], "
+            "actionability: [True/False], dosage sensitivity: [value or NA], "
+            "last curated: [date]'. "
+            "Copy each field value EXACTLY from the ClinGen record. Do NOT paraphrase or interpret. "
             "Do NOT infer variant-level actionability from gene-level ClinGen data. "
             "Leave as [] if no ClinGen entry is in the VARIANT DATABASE FACTS."
         )
@@ -51,6 +52,8 @@ class ClinicalResponse(BaseModel):
         description=(
             "Cancer screening protocol from NCCN chunks in CLINICAL GUIDELINES. "
             "Copy exact ages and procedure names from the retrieved text. "
+            "Each item MUST be a specific screening action (e.g. 'Annual mammography starting at age 25'). "
+            "Do NOT include introductory sentences like 'The following protocol is recommended'. "
             "CRITICAL: Before extracting any row from an NCCN table, verify the gene "
             "name in the leftmost column matches the query gene (e.g. BRCA1). "
             "Do NOT include protocols from other genes' rows (e.g. colonoscopy from "

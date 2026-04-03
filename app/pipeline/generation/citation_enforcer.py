@@ -6,7 +6,7 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
     category_keywords = {
         "Clinvar": [r'\bclinvar\b', r'\bclassified as\b', r'\brs\d+\b', r'\bclinical significance\b'],
         "ClinGen": [r'\bclingen\b', r'\bexpert panel\b', r'\bgene-disease validity\b', r'\bactionability\b'],
-        "gnomAD":  [r'\bgnomad\b', r'\bba1\b', r'\ballele.?frequency\b', r'\bpopulation frequency\b', r'\babsent from controls\b'],
+        "gnomAD":  [r'\bgnomad\b', r'\ballele.?frequency\b', r'\bpopulation frequency\b', r'\babsent from controls\b', r'\brare in population\b'],
         "NCCN":    [r'\bnccn\b', r'\bscreening\b', r'\bmastectomy\b', r'\bsurveillance\b', r'\bmri\b', r'\bmammography\b', r'\bprotocol\b']
     }
 
