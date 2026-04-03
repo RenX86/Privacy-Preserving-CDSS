@@ -137,7 +137,13 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
         f"   Every bullet in screening_protocol MUST have at least one citation.\n"
         f"3. SCREENING TABLES: Before extracting any protocol row, verify the gene name\n"
         f"   in the leftmost column matches the query gene. Do NOT include screening from\n"
-        f"   other genes' rows (e.g. colonoscopy from MLH1 rows for a BRCA1 query).\n\n"
+        f"   other genes' rows (e.g. colonoscopy from MLH1 rows for a BRCA1 query).\n"
+        f"4. SUMMARY SCOPE: The summary field must ONLY report facts from the ⚑ VARIANT DATABASE\n"
+        f"   FACTS block (ClinVar classification, gnomAD frequency). Do NOT include cancer risk\n"
+        f"   statements or disease associations in the summary — those belong in screening_protocol.\n"
+        f"5. CLINGEN SCOPE: ClinGen data is GENE-LEVEL (e.g. 'BRCA1 validity: True').\n"
+        f"   Do NOT write 'variants like rs879254116 are clinically actionable' — that infers\n"
+        f"   variant-level actionability from gene-level data. Report ClinGen facts as-is.\n\n"
         f"{reference_manifest}"
     )
 

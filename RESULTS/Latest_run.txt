@@ -1,200 +1,142 @@
-[STARTING LANGGRAPH] Query: What is the clinical significance of rs879254116 in BRCA1, which ACMG pathogenicity criteria apply, and what cancer screening protocol should the patient follow according to NCCN guidelines. Also confirm the ClinGen expert panel validity for BRCA1.,
-  [Decomposer] ACMG sub-query: ACMG pathogenicity criteria variant classification rules PVS1 PS1 PS2 PS3 PS4 PM
+[STARTING LANGGRAPH] Query: What is the clinical significance of rs879254116 in BRCA1, and what cancer screening protocol should the patient follow according to NCCN guidelines. Also confirm the ClinGen expert panel validity for BRCA1.,
   [Decomposer] Screening sub-query: NCCN cancer screening surveillance mammography MRI risk-reducing prophylactic sa
-21:19:25 | cdss.pool                 | INFO | PostgreSQL connection pool initialised (min=2, max=10)
+13:02:07 | cdss.pool                 | INFO | PostgreSQL connection pool initialised (min=2, max=10)
   [gnomAD] Querying variant 17-43049159-GA-G (from rs879254116)
-21:19:25 | httpx                     | INFO | HTTP Request: POST https://gnomad.broadinstitute.org/api "HTTP/1.1 200 OK"
+13:02:08 | httpx                     | INFO | HTTP Request: POST https://gnomad.broadinstitute.org/api "HTTP/1.1 200 OK"
   [gnomAD] API error for 17-43049159-GA-G: Variant not found
-21:19:26 | httpx                     | INFO | HTTP Request: GET https://search.clinicalgenome.org/api/genes?page=1&pageSize=5&search=BRCA1 "HTTP/1.1 200 OK"
+13:02:09 | httpx                     | INFO | HTTP Request: GET https://search.clinicalgenome.org/api/genes?page=1&pageSize=5&search=BRCA1 "HTTP/1.1 200 OK"
   [ClinGen] 1 record(s) for BRCA1
     symbol=BRCA1 | validity=True | actionability=True | curated=08/29/2024
-21:19:34 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+13:02:19 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
   [MultiQuery] Generated 3 targeted queries (JSON schema):
-    • ACMG PVS1 criteria loss of function null variant pathogenic evidence thresholds
-    • ACMG PP/BP criteria combining rules for missense variants computational predicti
-    • ACMG PS/PM/BS evidence weights and thresholds for de novo inheritance in pedigre
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 11.03it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 26.01it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 26.75it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 21.96it/s]
-  [MultiQuery] 4 queries × up to 15 results = 42 unique chunks
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:32<00:00, 16.08s/it]
-  [PDF] Reranked 42 chunks against: ACMG pathogenicity criteria variant classification rules PVS...
-21:20:09 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
-  [MultiQuery] Generated 3 targeted queries (JSON schema):
-    • BRCA1/2 carriers NCCN guidelines mammography MRI surveillance age recommendation
-    • risk-reducing salpingo-oophorectomy (RRSO) timing and mastectomy prophylactic in
-    • hereditary breast and ovarian cancer surveillance protocols: mammography MRI int
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 24.17it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 26.98it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 21.29it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 22.31it/s]
+    • NCCN guidelines BRCA1/2 carriers breast cancer surveillance mammography MRI age
+    • hereditary breast and ovarian cancer syndrome (HBOC) surveillance protocols BRCA
+    • BRCA mutation carrier management clinical practice guidelines risk-reducing surg
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  2.01it/s]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 19.97it/s]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 21.90it/s]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 23.90it/s]
   [MultiQuery] 4 queries × up to 15 results = 36 unique chunks
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:28<00:00, 14.31s/it]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:28<00:00, 14.12s/it]
   [PDF] Reranked 36 chunks against: NCCN cancer screening surveillance mammography MRI risk-redu...
 
-[CRAG] Grading 55 PDF chunks:
+[CRAG] Grading 33 PDF chunks:
        Thresholds: CORRECT >= 0.05 | AMBIGUOUS >= 0.01 | INCORRECT < 0.01
           score         grade  source / text preview
        ----------------------------------------------------------------------
           0.824     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Ovarian/ Fallopian Tube/ Peritoneal/ Uterine
-          0.699     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Bilateral Salpingo-Oophorectomy] ## Bilateral Salpingo-Oophorectomy   Carriers of a confirmed BRCA1/2 P/LP va
-          0.692     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: CANCER RISK MANAGEMENT BASED ON GENETIC TEST RESULTS a,1,2] | Gene   | Breast Cancer b
           0.680     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.601     [CORRECT]  [ACMG_2015] [page: 33] Richards et al. Page 33   **Table 3**   Criteria for Classifying Pathogenic Variants   **Very strong evidence
           0.543     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
           0.534     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.465     [CORRECT]  [ACMG_2015] [page: 10] Richards et al. Page 10   moderate (PM1–6), or supporting (PP1–5) and each benign criterion is weighted as st
-          0.440     [CORRECT]  [ACMG_2015] [page: 36] Richards et al. Page 36   **Table 5**   Rules for Combining Criteria to Classify Sequence Variants   **Pathog
           0.423     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.402     [CORRECT]  [ACMG_2015] [page: 3] Richards et al. Page 3   performed in a CLIA-approved laboratory with results interpreted by a board-certified
+          0.423     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
           0.348     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.268     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.286     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
           0.263     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.238     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
           0.225     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.223     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.213     [CORRECT]  [ACMG_2015] [page: 9] Richards et al. Page 9   programs each have their own strengths and weaknesses depending on the algorithm and
           0.210     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.191     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.172     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.161     [CORRECT]  [ACMG_2015] [page: 16] Richards et al. Page 16   variants. Therefore missense variants in _ASPM_ can be considered to have this line
-          0.131     [CORRECT]  [ACMG_2015] [page: 34] Richards et al. Page 34   acid/protein level   PM6 Assumed _de novo_, but without confirmation of paternity a
           0.130     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.119     [CORRECT]  [ACMG_2015] [page: 5] Richards et al. Page 5   to incorrect assumptions of pathogenic and benign effects respectively. Thus, it is r
-          0.111     [CORRECT]  [ACMG_2015] [page: 4] Richards et al. Page 4   their laboratories and/or by the broader community. In addition, typical examples of
-          0.099     [CORRECT]  [ACMG_2015] [page: 17] Richards et al. Page 17   recessive disorder; therefore, this evidence is much stronger for supporting a like
+          0.101     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Ovarian/ Fallopian Tube/ Peritoneal/ Uterine
           0.096     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.072     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.087     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site
           0.071     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.069     [CORRECT]  [ACMG_2015] [page: 11] Richards et al. Page 11   penultimate exon such that nonsense-mediated decay [26] would not be predicted and
-          0.059     [CORRECT]  [ACMG_2015] [page: 15] Richards et al. Page 15   **PP1 BS4 Segregation analysis**   Care must be taken in using segregation of a var
-          0.049   [AMBIGUOUS]  [ACMG_2015] [page: 2] Richards et al. Page 2   **Wayne W. Grody [ACMG]**, Departments of Pathology & Laboratory Medicine, Pediatrics
           0.039   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: Screening] ## Screening   Mammography has served as the standard screening modality for detection of breast c
-          0.038   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA -Related Breast/Ovarian Cancer Syndrome] ## BRCA -Related Breast/Ovarian Cancer Syndrome   Both the BRCA
-          0.032   [AMBIGUOUS]  [ACMG_2015] [page: 35] Richards et al. Page 35   **Table 4**   Criteria for Classifying Benign Variants   **Stand-Alone evidence of
-          0.027   [AMBIGUOUS]  [ACMG_2015] [page: 25] Richards et al. Page 25   decision-making. However, it is recommended that all possible follow-up testing, as
-          0.026   [AMBIGUOUS]  [ACMG_2015] [page: 13] Richards et al. Page 13   documented healthy adult individual for a recessive (homozygous), dominant (heteroz
-          0.017   [AMBIGUOUS]  [ACMG_2015] [page: 12] Richards et al. Page 12   **C.** The phenotype in the patient matches the gene’s disease association with rea
+          0.020   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: Testing is clinically indicated in the following scenarios:] ## Testing is clinically indicated in the follow
+          0.019   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: Testing may be considered in the following scenario (with appropriate pre-test education and access to post-t
+          0.017   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: Prostate Cancer Risk] ## Prostate Cancer Risk   Germline BRCA1/2 P/LP variants are associated with increased
           0.015   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.012   [AMBIGUOUS]  [ACMG_2015] [page: 37] Richards et al. Page 37  |Evidence to support classification|Multiple publications (note variant not availabl
           0.011   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: LI-FRAUMENI SYNDROME: ADULT SURVEILLANCE] | Other cancer risks     | • Comprehensive physical exam including
-          0.011   [AMBIGUOUS]  [ACMG_2015] [page: 29] Richards et al. Page 29   **Figure 1. Evidence Framework** The following chart organizes each of the criteria
-          0.010   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Probability Models] ## Probability Models   Decision models developed to estimate the likelihood that a BRCA1
-          0.010   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Ovarian Cancer: Risk Reduction Principles and Strategies] ## Ovarian Cancer: Risk Reduction Principles and St
           0.009   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: LI-FRAUMENI SYNDROME: ADULT SURVEILLANCE] | Site                   | Screening/Surveillance Procedure and Int
           0.008   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.008   [INCORRECT]  [ACMG_2015] [page: 24] Richards et al. Page 24   complete clinical information is so essential for the interpretation of genome-leve
-          0.006   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: CANCER RISK MANAGEMENT BASED ON GENETIC TEST RESULTS a,1,2] | RAD51D | Comments: Based on estimates from avai
-          0.005   [INCORRECT]  [ACMG_2015] [page: 6] Richards et al. Page 6   **Nomenclature**   A uniform nomenclature, informed by a set of standardized criteria
-          0.004   [INCORRECT]  [ACMG_2015] [page: 8] Richards et al. Page 8   Accountability Act (HIPAA) regulations for privacy. Clinical laboratories are encoura
-          0.003   [INCORRECT]  [ACMG_2015] [page: 22] Richards et al. Page 22   used in clinical care. Gene summaries and clinically relevant variants can be found
-          0.002   [INCORRECT]  [ACMG_2015] [page: 27] Richards et al. Page 27   [28. Odds Ratio Confidence Interval Calculator. Available at http://www.easycalcula
-          0.001   [INCORRECT]  [ACMG_2015] [page: 38] |Evidence to support classification|Richa<br>MAF<br>EA|rds et<br>MAF<br>EA|al.<br>MAF<br>AA|AA MAF|Multiple p
-          0.001   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BREAST, OVARIAN, UTERINE, AND PROSTATE CANCER RISK REDUCTION STRATEGIES FOR TRANSGENDER, NON-BINARY, AND GEND
+          0.002   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Testing is clinically indicated in the following scenarios:*] ## Testing is clinically indicated in the follo
+          0.002   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: CRIT-8] ## CRIT-8   - Testing Criteria for Cowden Syndrome -  Added family history criteria: unaffected; or a
+          0.001   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Testing is clinically indicated in the following scenarios:] ## Testing is clinically indicated in the follow
+          0.001   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: References] ## References   1. Fearon ER, Vogelstein B. A genetic model for colorectal tumorigenesis. Cell 19
+          0.001   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: CRIT-1] ## CRIT-1   - General Testing Criteria -  Testing is clinically indicated in the following scenarios
+          0.001   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Refer for genetic testing in the following scenario:] ## Refer for genetic testing in the following scenario:
+          0.000   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: CRIT-7] ## CRIT-7   - Testing Criteria for Li-Fraumeni Syndrome -  Added family history criteria: unaffected;
+          0.000   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: TESTING CRITERIA FOR COWDEN SYNDROME (CS) /PTEN HAMARTOMA TUMOR SYNDROME (PHTS) a,qq,rr,ss] ## TESTING CRITER
+          0.000   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Testing Criteria] ## Testing Criteria   Testing criteria for Cowden syndrome/PHTS are grouped into three gene
 
-[CRAG] Kept 43 chunks | Dropped 12 INCORRECT chunks
+[CRAG] Kept 22 chunks | Dropped 11 INCORRECT chunks
 
-21:20:38 | cdss.self_rag             | INFO | Calling Ollama [ministral-3:14b] (3 DB + 12 PDF chunks)
-21:21:22 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
-21:21:22 | cdss.self_rag             | INFO | Draft JSON generated (4155 chars)
+13:02:48 | cdss.self_rag             | INFO | Calling Ollama [ministral-3:14b] (3 DB + 6 PDF chunks)
+13:03:57 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+13:03:57 | cdss.self_rag             | INFO | Draft JSON generated (5547 chars)
 
 --- RAW JSON ---
-{
-  "summary": {
-    "text": "Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic** based on the provided context and ClinGen expert panel validation for BRCA1. Below are the relevant ACMG criteria and the corresponding cancer screening protocol according to NCCN guidelines.",
+{ "summary": {
+    "text": "Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic (P/LP)**. This classification is supported by the **ClinGen expert panel**, which recognizes BRCA1 as a high-penetrance cancer susceptibility gene ([Source: ClinGen, Reference: BRCA1 (HGNC:1100)]). The clinical significance of this variant aligns with the established risks associated with BRCA1 P/LP variants, including elevated lifetime risks of breast, ovarian, tubal, and peritoneal cancers, as well as increased risks of serous endometrial cancer and primary peritoneal cancer ([Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]).",
 
     "citations": [
-      "[Source: ClinGen, Reference: BRCA1 (HGNC:1100)]",
-      "[Source: Clinvar, Reference: rs879254116]"
+        "[Source: ClinGen, Reference: BRCA1 (HGNC:1100)]",
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
     ]
   },
 
   "clingen_validity": [
     {
-      "text": "The **ClinGen expert panel** has validated **BRCA1** as a gene with strong clinical significance for hereditary breast and ovarian cancer risk. This validation supports the classification of pathogenic variants in BRCA1, including rs879254116, as clinically actionable.",
+      "text": "The **ClinGen expert panel** has validated BRCA1 as a **high-penetrance cancer susceptibility gene**, confirming the clinical relevance of P/LP variants like rs879254116 ([Source: ClinGen, Reference: BRCA1 (HGNC:1100)])."
+    ,
       "citations": [
         "[Source: ClinGen, Reference: BRCA1 (HGNC:1100)]"
       ]
     }
   ],
 
-  "acmg_rules": [
-    {
-      "text": "**PS1 (Strong): Multiple lines of computational evidence support a deleterious effect on the gene or gene product.**",
-      "citations": [
-        "[Source: ACMG_2015, Reference: page 16]"
-      ]
-    },
-    {
-      "text": "**PM2 (Moderate): Absent from controls (e.g., gnomAD) in the Exome Sequencing Project, 1000 Genomes Project, or equivalent.**",
-      "citations": [
-        "[Source: gnomAD, Reference: rs879254116]",
-        "[Source: ACMG_2015, Reference: page 36]"
-      ]
-    },
-    {
-      "text": "**PP5 (Supporting): Reputable source (e.g., ClinVar) has classified this variant as pathogenic.**",
-      "citations": [
-        "[Source: Clinvar, Reference: rs879254116]",
-        "[Source: ACMG_2015, Reference: page 16]"
-      ]
-    }
-  ],
-
   "screening_protocol": [
     {
-      "text": "**Breast Cancer Screening:**",
+      "text": "Begin **breast cancer screening** with **annual mammography** starting at **age 25–29 years** (or 5–10 years younger than the youngest affected relative). Continue annually thereafter ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Mammography:** Annual starting at age 25–29 years (or 5–10 years earlier than the youngest affected relative).",
+      "text": "Add **annual breast MRI** (with contrast) starting at **age 25–29 years**, alternating with mammography or in addition to mammography ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Breast MRI:** Annual starting at age 25–29 years.",
+      "text": "Perform **clinical breast examination** annually by a healthcare provider ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Clinical Breast Exam:** Semi-annual starting at age 25–29 years.",
+      "text": "Consider **risk-reducing mastectomy** after discussion with a multidisciplinary team, particularly if the patient has a strong family history or high psychological burden ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Ovarian Cancer Screening:**",
+      "text": "Begin **ovarian cancer screening** with **transvaginal ultrasound (TVUS)** and **serum CA-125** testing annually starting at **age 30–35 years** or 5–10 years earlier than the youngest affected relative ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Transvaginal Ultrasound (TVUS) and CA-125:** Annual starting at age 30–35 years or 5–10 years earlier than the youngest affected relative.",
+      "text": "Consider **risk-reducing salpingo-oophorectomy (RRSO)** between **ages 35–40 years** or after childbearing is complete, given the high risk of ovarian, tubal, and peritoneal cancers ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Risk-Reducing Surgery:**",
+      "text": "Perform **endometrial cancer screening** with **annual endometrial biopsy** or **transvaginal ultrasound** starting at **age 30–35 years** due to increased risk of serous endometrial cancer ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Bilateral Salpingo-Oophorectomy (BSO):** Considered for women who have completed childbearing, typically between ages 35–40 years or 5–10 years earlier than the youngest affected relative.",
+      "text": "Consider **prophylactic hysterectomy** if undergoing RRSO, particularly for BRCA1 carriers, due to increased risk of endometrial cancer ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "**Prophylactic Mastectomy:** Considered for high-risk individuals, typically between ages 25–30 years or 5–10 years earlier than the youngest affected relative.",
+      "text": "Monitor for **primary peritoneal cancer** with **annual CA-125 and imaging** if RRSO is not performed ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]"
+        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     }
   ]
@@ -204,55 +146,22 @@ Batches: 100%|██████████████████████
 
 --- PRE-ENFORCER ANSWER ---
 **Clinical Summary**
-Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic** based on the provided context and ClinGen expert panel validation for BRCA1. Below are the relevant ACMG criteria and the corresponding cancer screening protocol according to NCCN guidelines. [Source: ClinGen, Reference: BRCA1 (HGNC:1100)] [Source: Clinvar, Reference: rs879254116]
+Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic (P/LP)**. This classification is supported by the **ClinGen expert panel**, which recognizes BRCA1 as a high-penetrance cancer susceptibility gene ([Source: ClinGen, Reference: BRCA1 (HGNC:1100)]). The clinical significance of this variant aligns with the established risks associated with BRCA1 P/LP variants, including elevated lifetime risks of breast, ovarian, tubal, and peritoneal cancers, as well as increased risks of serous endometrial cancer and primary peritoneal cancer ([Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]). [Source: ClinGen, Reference: BRCA1 (HGNC:1100)] [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
 
 **ClinGen Expert Panel Validity**
-* The **ClinGen expert panel** has validated **BRCA1** as a gene with strong clinical significance for hereditary breast and ovarian cancer risk. This validation supports the classification of pathogenic variants in BRCA1, including rs879254116, as clinically actionable. [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
-
-**ACMG Pathogenicity Criteria**
-* **PS1 (Strong): Multiple lines of computational evidence support a deleterious effect on the gene or gene product.** [Source: ACMG_2015, Reference: page 16]
-* **PM2 (Moderate): Absent from controls (e.g., gnomAD) in the Exome Sequencing Project, 1000 Genomes Project, or equivalent.** [Source: gnomAD, Reference: rs879254116] [Source: ACMG_2015, Reference: page 36]
-* **PP5 (Supporting): Reputable source (e.g., ClinVar) has classified this variant as pathogenic.** [Source: Clinvar, Reference: rs879254116] [Source: ACMG_2015, Reference: page 16]
+* The **ClinGen expert panel** has validated BRCA1 as a **high-penetrance cancer susceptibility gene**, confirming the clinical relevance of P/LP variants like rs879254116 ([Source: ClinGen, Reference: BRCA1 (HGNC:1100)]).
 
 **Cancer Screening Protocol**
-* **Breast Cancer Screening:** [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Mammography:** Annual starting at age 25–29 years (or 5–10 years earlier than the youngest affected relative). [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Breast MRI:** Annual starting at age 25–29 years. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Clinical Breast Exam:** Semi-annual starting at age 25–29 years. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Ovarian Cancer Screening:** [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Transvaginal Ultrasound (TVUS) and CA-125:** Annual starting at age 30–35 years or 5–10 years earlier than the youngest affected relative. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Risk-Reducing Surgery:** [Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]
-* **Bilateral Salpingo-Oophorectomy (BSO):** Considered for women who have completed childbearing, typically between ages 35–40 years or 5–10 years earlier than the youngest affected relative. [Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]
-* **Prophylactic Mastectomy:** Considered for high-risk individuals, typically between ages 25–30 years or 5–10 years earlier than the youngest affected relative. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
+* Begin **breast cancer screening** with **annual mammography** starting at **age 25–29 years** (or 5–10 years younger than the youngest affected relative). Continue annually thereafter ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Add **annual breast MRI** (with contrast) starting at **age 25–29 years**, alternating with mammography or in addition to mammography ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Perform **clinical breast examination** annually by a healthcare provider ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Consider **risk-reducing mastectomy** after discussion with a multidisciplinary team, particularly if the patient has a strong family history or high psychological burden ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Begin **ovarian cancer screening** with **transvaginal ultrasound (TVUS)** and **serum CA-125** testing annually starting at **age 30–35 years** or 5–10 years earlier than the youngest affected relative ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Consider **risk-reducing salpingo-oophorectomy (RRSO)** between **ages 35–40 years** or after childbearing is complete, given the high risk of ovarian, tubal, and peritoneal cancers ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Perform **endometrial cancer screening** with **annual endometrial biopsy** or **transvaginal ultrasound** starting at **age 30–35 years** due to increased risk of serous endometrial cancer ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Consider **prophylactic hysterectomy** if undergoing RRSO, particularly for BRCA1 carriers, due to increased risk of endometrial cancer ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
+* Monitor for **primary peritoneal cancer** with **annual CA-125 and imaging** if RRSO is not performed ([Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]).
 ----------------
 
-
---- POST-ENFORCER ANSWER ---
-**Clinical Summary**
-Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic** based on the provided context and ClinGen expert panel validation for BRCA1. Below are the relevant ACMG criteria and the corresponding cancer screening protocol according to NCCN guidelines. [Source: ClinGen, Reference: BRCA1 (HGNC:1100)] [Source: Clinvar, Reference: rs879254116]
-
-**ClinGen Expert Panel Validity**
-* The **ClinGen expert panel** has validated **BRCA1** as a gene with strong clinical significance for hereditary breast and ovarian cancer risk. This validation supports the classification of pathogenic variants in BRCA1, including rs879254116, as clinically actionable. [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
-
-**ACMG Pathogenicity Criteria**
-* **PS1 (Strong): Multiple lines of computational evidence support a deleterious effect on the gene or gene product.** [Source: ACMG_2015, Reference: page 16]
-* **PM2 (Moderate): Absent from controls (e.g., gnomAD) in the Exome Sequencing Project, 1000 Genomes Project, or equivalent.** [Source: gnomAD, Reference: rs879254116] [Source: ACMG_2015, Reference: page 36]
-* **PP5 (Supporting): Reputable source (e.g., ClinVar) has classified this variant as pathogenic.** [Source: Clinvar, Reference: rs879254116] [Source: ACMG_2015, Reference: page 16]
-
-**Cancer Screening Protocol**
-* **Breast Cancer Screening:** [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Mammography:** Annual starting at age 25–29 years (or 5–10 years earlier than the youngest affected relative). [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Breast MRI:** Annual starting at age 25–29 years. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Clinical Breast Exam:** Semi-annual starting at age 25–29 years. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Ovarian Cancer Screening:** [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Transvaginal Ultrasound (TVUS) and CA-125:** Annual starting at age 30–35 years or 5–10 years earlier than the youngest affected relative. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-* **Risk-Reducing Surgery:** [Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]
-* **Bilateral Salpingo-Oophorectomy (BSO):** Considered for women who have completed childbearing, typically between ages 35–40 years or 5–10 years earlier than the youngest affected relative. [Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]
-* **Prophylactic Mastectomy:** Considered for high-risk individuals, typically between ages 25–30 years or 5–10 years earlier than the youngest affected relative. [Source: Genetic-Familial High-Risk Assessment, Reference: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGE...]
-----------------
-
-21:21:22 | cdss.self_rag             | INFO | Running LLM-based critic...
-21:21:55 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
-21:21:55 | cdss.self_rag             | INFO | LLM Critic finished. Length: 3218 -> 3248
-[Citation] Verified DB chunks: 3 | Verified PDF chunks: 12 → confidence: high
+[Citation] Verified DB chunks: 3 | Verified PDF chunks: 6 → confidence: high
 [LANGGRAPH FINISHED] Confidence: high
