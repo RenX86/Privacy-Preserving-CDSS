@@ -88,12 +88,14 @@ def decompose_query(query: str, gene: str = None) -> list[SubQuery]:
             print("  [Decomposer] Protocol keywords found but screening also detected — skipping protocol_retrieval")
 
     if has_screening:
-        # Mentions mammography, MRI, risk-reducing surgery — exactly what
-        # NCCN Genetic/Familial High-Risk Assessment sections contain.
+        # The focused text should match NCCN section headings like:
+        # "BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT"
+        # Including "pathogenic variant" in the seed ensures MultiQuery
+        # expansions target P/LP carrier management, not generic screening.
         focused = (
-            f"NCCN cancer screening surveillance mammography MRI "
-            f"risk-reducing prophylactic salpingo-oophorectomy "
-            f"{gene_tag} carrier management"
+            f"NCCN {gene_tag} pathogenic likely pathogenic variant-positive "
+            f"management cancer screening surveillance mammography MRI "
+            f"risk-reducing prophylactic salpingo-oophorectomy carrier"
         ).strip()
         print(f"  [Decomposer] Screening sub-query: {focused[:80]}")
         sub_queries.append(SubQuery(

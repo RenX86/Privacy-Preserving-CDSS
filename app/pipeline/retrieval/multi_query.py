@@ -62,17 +62,17 @@ def expand_queries(original_query: str, n: int = 3, query_type: str = "general")
     """
     if query_type == "screening_retrieval":
         prompt = f"""You are a clinical genetics search assistant.
-Generate {n} short, specific search queries to retrieve cancer screening and surveillance sections.
-Focus on: BRCA carrier management, surveillance schedules (mammography, MRI ages), risk-reducing surgery (RRSO, mastectomy timing), prophylactic interventions, hereditary cancer prevention.
-DO NOT generate treatment chemotherapy protocols or unrelated topics.
+Generate {n} short, specific search queries to retrieve NCCN management sections for patients with PATHOGENIC/LIKELY PATHOGENIC variants in cancer susceptibility genes.
+Focus on: P/LP variant-positive management, surveillance schedules (mammography, MRI, ages), risk-reducing surgery (RRSO timing, mastectomy), prophylactic interventions for confirmed pathogenic variant carriers.
+DO NOT generate generic cancer screening, treatment chemotherapy protocols, or VUS management.
 Return ONLY the queries, one per line, no numbering, no explanation.
 
 Original query: {original_query}
 
 Example good queries:
-BRCA1 carrier annual breast MRI mammography starting age
-risk-reducing salpingo-oophorectomy RRSO age recommendation BRCA
-hereditary breast ovarian cancer surveillance screening protocol"""
+BRCA1 pathogenic variant-positive management breast surveillance mammography MRI age
+pathogenic BRCA carrier risk-reducing salpingo-oophorectomy RRSO age recommendation
+NCCN hereditary cancer P/LP variant carrier screening management protocol"""
 
     elif query_type == "protocol_retrieval":
         prompt = f"""You are a clinical oncology search assistant.
