@@ -3,6 +3,7 @@ Shared PostgreSQL connection pool.
 Import db_conn() context manager instead of calling psycopg2.connect() directly.
 """
 import logging
+import time
 from contextlib import contextmanager
 from psycopg2 import pool as pg_pool
 from app.config import settings
@@ -24,9 +25,22 @@ def _get_pool() -> pg_pool.ThreadedConnectionPool:
     return _pool
 
 
-def get_conn():
-    """Borrow a connection from the pool."""
-    return _get_pool().getconn()
+def get_conn(retries: int = 5, delay: float = 0.3):
+    """Borrow a connection from the pool with retry on exhaustion."""
+    pool = _get_pool()
+    for attempt in range(retries):
+        try:
+            return pool.getconn()
+        except pg_pool.PoolError:
+            if attempt == retries - 1:
+                raise
+            log.warning(
+                f"Connection pool exhausted — retrying in {delay}s "
+                f"(attempt {attempt + 1}/{retries})"
+            )
+            time.sleep(delay)
+            delay *= 1.5  # exponential backoff
+
 
 
 def release_conn(conn):

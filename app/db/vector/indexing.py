@@ -69,7 +69,7 @@ def read_and_scrub_file(filepath: str, parser: str) -> str | list:
     if ext == ".pdf":
         if parser == "docling":
             print(f"   [Router] Docling (table-aware) parser...")
-            md_text = convert_pdf_in_batches(filepath, batch_size=10)
+            md_text = convert_pdf_in_batches(filepath, batch_size=15)
 
             # ── NCCN SCRUBBING ────────────────────────────────────────────────
             md_text = re.sub(
@@ -82,7 +82,7 @@ def read_and_scrub_file(filepath: str, parser: str) -> str | list:
             )
             md_text = re.sub(
                 r'Version \d+\.\d+.*?permission of NCCN\.?\s*',
-                '', md_text, flags=re.IGNORECASE | re.DOTALL
+                '', md_text, flags=re.IGNORECASE 
             )
             md_text = re.sub(r'(?im)^NCCN Guidelines Index.*?$', '', md_text)
             md_text = re.sub(r'(?im)^Table of Contents\s*$', '', md_text)
@@ -235,7 +235,7 @@ def discover_documents(docs_folder: str) -> list[dict]:
             documents.append({
                 "filepath": os.path.join(folder_path, filename),
                 "source":   meta.get("source", filename.rsplit(".", 1)[0]),
-                "category": category,
+                "category": meta.get("category", category),
                 "gene":     meta.get("gene", None),
                 "parser":   parser,
             })

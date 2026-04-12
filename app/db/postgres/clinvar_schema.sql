@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS variants (
 
 CREATE TABLE IF NOT EXISTS medical_documents (
     id                     SERIAL PRIMARY KEY,
-    source                 VARCHAR(50),
+    source                 VARCHAR(100),
     category               VARCHAR(50),
     gene                   VARCHAR(50),
     chunk_text             TEXT NOT NULL,
@@ -39,7 +39,6 @@ CREATE INDEX IF NOT EXISTS idx_variants_rsid ON variants (rsid);
 CREATE INDEX IF NOT EXISTS idx_variants_gene ON variants(gene_symbol);
 CREATE INDEX IF NOT EXISTS idx_documents_source ON medical_documents(source);
 CREATE INDEX IF NOT EXISTS idx_documents_gene ON medical_documents(gene);
-CREATE INDEX IF NOT EXISTS idx_documents_parent_text ON medical_documents(parent_text);
 
 -- Vector similarity search index (for fast pgvector searches)
 CREATE INDEX IF NOT EXISTS idx_documents_embedding ON medical_documents USING ivfflat (embedding vector_cosine_ops);

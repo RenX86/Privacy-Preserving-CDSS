@@ -88,6 +88,21 @@ the leftmost column of THAT SPECIFIC ROW matches the query gene.
   ✓ RIGHT: Only extracting data from rows explicitly labeled BRCA1 or BRCA1/2
 
 If a screening procedure does not appear in the gene-specific rows, do NOT include it.
+
+══════════════════════════════════════════════════════
+RULE 7 — gnomAD: ONLY REPORT WHAT THE CHUNK SAYS
+══════════════════════════════════════════════════════
+The gnomAD chunk in the VARIANT DATABASE FACTS block will say one of:
+  • "AF=0.XXXXXXXX" → Report this exact number. Do NOT round or recalculate.
+  • "Variant NOT FOUND in gnomAD" → Write "Variant is absent from gnomAD population database."
+    Do NOT invent an allele frequency. Do NOT write any AF= number.
+  • No gnomAD chunk exists → Do NOT mention gnomAD at all.
+
+FORBIDDEN when gnomAD says "not found":
+  ✗ "has a gnomAD frequency of 0.00000817"
+  ✗ "AF=0.0001" or any invented number
+  ✗ "rare in the population" (you don't know this without data)
+
 """
 
 
@@ -119,6 +134,8 @@ def build_context_block(chunks: list[RetrievedChunk]) -> str:
             # Add a bold flag directly on the ClinVar classification line
             if chunk.source == "Clinvar":
                 lines.append(f"*** CONFIRMED CLASSIFICATION: {chunk.text} ***")
+            elif chunk.source == "gnomAD" and "not found" in chunk.text.lower():
+               lines.append(f"⚠⚠⚠ {chunk.text} — DO NOT INVENT ANY FREQUENCY VALUE ⚠⚠⚠")
             else:
                 lines.append(chunk.text)
             lines.append("")

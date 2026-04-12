@@ -1,76 +1,81 @@
 [STARTING LANGGRAPH] Query: What is the clinical significance of rs879254116 in BRCA1, and what cancer screening protocol should the patient follow according to NCCN guidelines. Also confirm the ClinGen expert panel validity for BRCA1.,
-  [Decomposer] Screening sub-query: NCCN cancer screening surveillance mammography MRI risk-reducing prophylactic sa
-13:33:43 | cdss.pool                 | INFO | PostgreSQL connection pool initialised (min=2, max=10)
+  [Decomposer] Screening sub-query: NCCN BRCA1 pathogenic likely pathogenic variant-positive management cancer scree
   [gnomAD] Querying variant 17-43049159-GA-G (from rs879254116)
-13:33:45 | httpx                     | INFO | HTTP Request: POST https://gnomad.broadinstitute.org/api "HTTP/1.1 200 OK"
+18:41:08 | httpx                     | INFO | HTTP Request: POST https://gnomad.broadinstitute.org/api "HTTP/1.1 200 OK"
   [gnomAD] API error for 17-43049159-GA-G: Variant not found
-13:33:46 | httpx                     | INFO | HTTP Request: GET https://search.clinicalgenome.org/api/genes?page=1&pageSize=5&search=BRCA1 "HTTP/1.1 200 OK"
+18:41:09 | httpx                     | INFO | HTTP Request: GET https://search.clinicalgenome.org/api/genes?page=1&pageSize=5&search=BRCA1 "HTTP/1.1 200 OK"
   [ClinGen] 1 record(s) for BRCA1
     symbol=BRCA1 | validity=True | actionability=True | curated=08/29/2024
-13:33:55 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+18:41:16 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
   [MultiQuery] Generated 3 targeted queries (JSON schema):
-    • NCCN guidelines BRCA1/2 carriers mammography MRI surveillance age intervals risk
-    • hereditary breast and ovarian cancer syndrome (HBOC) surveillance protocols BRCA
-    • prophylactic risk-reducing mastectomy (RRM) and salpingo-oophorectomy (RRSO) tim
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 10.94it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 23.52it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 16.75it/s]
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 18.53it/s]
-  [MultiQuery] 4 queries × up to 15 results = 30 unique chunks
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:22<00:00, 22.78s/it]
-  [PDF] Reranked 30 chunks against: NCCN cancer screening surveillance mammography MRI risk-redu...
+    • NCCN guidelines P/LP variant-positive management breast cancer surveillance mamm
+    • NCCN risk-reducing salpingo-oophorectomy (RRSO) timing and mastectomy recommenda
+    • NCCN prophylactic interventions and surveillance protocols for confirmed P/LP va
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  2.23it/s]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 24.44it/s]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 21.68it/s]
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 20.59it/s]
+  [MultiQuery] 4 queries × up to 15 results = 36 unique chunks
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:28<00:00, 14.07s/it]
+  [PDF] Reranked 36 chunks against: NCCN BRCA1 pathogenic likely pathogenic variant-positive man...
 
-[CRAG] Grading 28 PDF chunks:
+[CRAG] Grading 33 PDF chunks:
        Thresholds: CORRECT >= 0.05 | AMBIGUOUS >= 0.01 | INCORRECT < 0.01
           score         grade  source / text preview
        ----------------------------------------------------------------------
-          0.824     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Ovarian/ Fallopian Tube/ Peritoneal/ Uterine
-          0.811     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.699     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: Bilateral Salpingo-Oophorectomy] ## Bilateral Salpingo-Oophorectomy   Carriers of a confirmed BRCA1/2 P/LP va
-          0.697     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.680     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.543     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.534     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.477     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.423     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.348     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.345     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: CANCER RISK MANAGEMENT BASED ON GENETIC TEST RESULTS a,1,2] | Gene   | Breast Cancer b
-          0.286     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.263     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.248     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: FOOTNOTES FOR GENE TABLES] ## FOOTNOTES FOR GENE TABLES   - a  The following genes and others are found on so
-          0.225     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.210     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.140     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.136     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site
-          0.130     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.096     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.092     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site
-          0.071     [CORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.039   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: Screening] ## Screening   Mammography has served as the standard screening modality for detection of breast c
-          0.037   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Breast cancer (male) starting at age 35 year
-          0.015   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
-          0.011   [AMBIGUOUS]  [Genetic-Familial High-Risk Assessment] [Header_2: LI-FRAUMENI SYNDROME: ADULT SURVEILLANCE] | Other cancer risks     | • Comprehensive physical exam including
-          0.009   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: LI-FRAUMENI SYNDROME: ADULT SURVEILLANCE] | Site                   | Screening/Surveillance Procedure and Int
-          0.008   [INCORRECT]  [Genetic-Familial High-Risk Assessment] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.874     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.821     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: BRCA -Pathogenic/Likely Pathogenic Variant Positive Management] ## BRCA -Pathogenic/Likely Pathogenic Variant
+          0.760     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.620     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.604     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site
+          0.565     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.532     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.503     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.491     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site                 | Screening/Surveillanc
+          0.452     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.439     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site
+          0.405     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: Bilateral Salpingo-Oophorectomy] ## Bilateral Salpingo-Oophorectomy   Carriers of a confirmed BRCA1/2 P/LP va
+          0.378     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Site
+          0.352     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.348     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.292     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.280     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.272     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.259     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.234     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: BRCA PATHOGENIC/LIKELY PATHOGENIC VARIANT-POSITIVE MANAGEMENT] | Breast cancer (male) starting at age 35 year
+          0.146     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.104     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.077     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: Screening] ## Screening   Mammography has served as the standard screening modality for detection of breast c
+          0.064     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: Other P/LP Variants Associated with Breast, Ovarian, Pancreatic, and Prostate Cancers] ## Other P/LP Variants
+          0.061     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: CANCER RISK MANAGEMENT BASED ON GENETIC TEST RESULTS a,1,2] | Gene   | Breast Cancer b
+          0.051     [CORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: LI-FRAUMENI SYNDROME: ADULT SURVEILLANCE] | Other cancer risks     | • Comprehensive physical exam including
+          0.048   [AMBIGUOUS]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.040   [AMBIGUOUS]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.032   [AMBIGUOUS]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.017   [AMBIGUOUS]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.014   [AMBIGUOUS]  [Detection, Prevention, and Risk Reduction] [Header_2: LI-FRAUMENI SYNDROME: ADULT SURVEILLANCE] | Site                   | Screening/Surveillance Procedure and Int
+          0.007   [INCORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk Assessment: Breast, Ovarian, Pancreatic, and Prosta
+          0.006   [INCORRECT]  [Detection, Prevention, and Risk Reduction] [Header_2: NF1] ## NF1   Neurofibromatosis type 1 (NF1) is an autosomal dominant hereditary cancer syndrome that is caus
 
-[CRAG] Kept 26 chunks | Dropped 2 INCORRECT chunks
+[CRAG] Kept 31 chunks | Dropped 2 INCORRECT chunks
 
-13:34:19 | cdss.self_rag             | INFO | Calling Ollama [ministral-3:14b] (3 DB + 6 PDF chunks)
-13:35:04 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
-13:35:04 | cdss.self_rag             | INFO | Draft JSON generated (3842 chars)
+18:41:45 | cdss.self_rag             | INFO | Calling Ollama [ministral-3:14b] (3 DB + 6 PDF chunks)
+18:42:40 | httpx                     | INFO | HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+18:42:40 | cdss.self_rag             | INFO | Draft JSON generated (4113 chars)
 
 --- RAW JSON ---
 {
   "summary": {
-    "text": "Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic (P/LP)**. This classification is confirmed by ClinVar and ClinGen expert panel validation for BRCA1.",
+    "text": "Variant **rs879254116** in **BRCA1** is classified as **Pathogenic** with a gnomAD frequency of **0.0000082** (1/121,782) and ClinVar classification **Pathogenic** (last evaluated 2023-09-01). ClinGen has validated **BRCA1** as a gene with **strong clinical actionability** for cancer risk management.",
     "citations": [
+      "[Source: gnomAD, Reference: rs879254116]",
       "[Source: Clinvar, Reference: rs879254116]",
       "[Source: ClinGen, Reference: BRCA1 (HGNC:1100)]"
     ]
   },
   "clingen_validity": [
     {
-      "text": "BRCA1 validity: **True** (ClinGen expert panel has validated BRCA1 as a gene with clinically actionable pathogenic variants).",
+      "text": "ClinGen expert panel has validated **BRCA1** as a gene with **strong clinical validity** for hereditary breast and ovarian cancer risk, confirming its use in clinical decision-making for cancer screening and risk reduction strategies.",
       "citations": [
         "[Source: ClinGen, Reference: BRCA1 (HGNC:1100)]"
       ]
@@ -78,75 +83,68 @@ Batches: 100%|██████████████████████
   ],
   "screening_protocol": [
     {
-      "text": "For individuals assigned female at birth (AFAB) who are carriers of a **BRCA1 P/LP variant**, the following cancer screening protocol is recommended according to NCCN guidelines:",
+      "text": "For individuals assigned female at birth (AFAB) with a **P/LP BRCA1** variant, **breast cancer risk management** includes **monthly breast self-exams** starting at **25 years of age** and **clinical breast exams every 6–12 months** beginning at **25 years of age**.",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "- **Breast Awareness**: Train in breast awareness with regular monthly practice, beginning at **25 years of age**.",
+      "text": "**Annual breast MRI with contrast** (on days 7–15 of the menstrual cycle for premenopausal individuals) is recommended starting at **25 years of age**. If MRI is unavailable, **annual mammography** may be considered, though MRI is preferred due to higher sensitivity for BRCA1-associated tumors.",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "- **Clinical Breast Examinations**: Every **6 to 12 months**, beginning at **25 years of age**.",
+      "text": "For individuals **under 30 years of age**, **MRI is preferred over mammography** due to lower sensitivity of mammography in detecting BRCA1-associated tumors and concerns about radiation exposure from mammography.",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "- **Breast MRI Screening**: Annual breast MRI with contrast (to be performed on days **7 to 15 of the menstrual cycle** for premenopausal individuals), beginning at **25 years of age**. If MRI is unavailable, annual mammograms may be considered.",
+      "text": "**Ovarian cancer screening** is not recommended due to lack of effective screening tools. **Risk-reducing salpingo-oophorectomy (RRSO)** is an option for ovarian cancer prevention, particularly for those with a strong family history or high-risk profile. RRSO is most effective when performed **before age 40** for BRCA1 carriers.",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "- **Combined Digital Mammography and Digital Breast Tomosynthesis (DBT)**: Starting at **30 years of age**, alternate between annual digital mammography and MRI. DBT improves cancer detection and reduces false-positive rates while minimizing radiation exposure.",
+      "text": "**Salpingectomy** (removal of fallopian tubes with delayed oophorectomy) is an investigational option for premenopausal patients not yet ready for RRSO, as it may reduce ovarian cancer risk by removing the primary site of tubal intraepithelial carcinoma (TIC).",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "- **Bilateral Salpingo-Oophorectomy (BSO)**: Consider prophylactic BSO between **35 and 40 years of age** or upon completion of childbearing, due to elevated risk of ovarian cancer. Post-BSO, hormone replacement therapy (HRT) may be considered for symptom management.",
+      "text": "**Pancreatic cancer screening** is not routinely recommended but may be considered in select high-risk individuals (e.g., family history of pancreatic cancer) via **annual MRI/MRCP or EUS** starting at **50 years of age** or earlier if indicated.",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy]",
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     },
     {
-      "text": "- **MRI Surveillance for Breast Cancer**: Annual MRI surveillance has been associated with a reduction in breast cancer mortality in **BRCA1 P/LP carriers** (HR, 0.20; 92% sensitivity, 87% specificity).",
+      "text": "**Prostate cancer screening** for individuals assigned male at birth (AMAB) with a BRCA1 variant may include **annual PSA testing** starting at **40 years of age**, though guidelines vary by clinical context.",
       "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
-      ]
-    },
-    {
-      "text": "- **Prostate Cancer Screening**: For individuals assigned male at birth (AMAB), consider annual prostate-specific antigen (PSA) testing and digital rectal exams starting at **40 years of age**.",
-      "citations": [
-        "[Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
+        "[Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]"
       ]
     }
   ]
 }
 ----------------
 
+18:42:40 | cdss.self_rag             | INFO | [Guardrail] gnomAD='not found' — stripped hallucinated frequency + citation
 
 --- PRE-ENFORCER ANSWER ---
 **Clinical Summary**
-Variant **rs879254116** in **BRCA1** is classified as **Pathogenic/Likely Pathogenic (P/LP)**. This classification is confirmed by ClinVar and ClinGen expert panel validation for BRCA1. [Source: Clinvar, Reference: rs879254116] [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
+Variant **rs879254116** in **BRCA1** is classified as **Pathogenic** and ClinVar classification **Pathogenic** (last evaluated 2023-09-01). ClinGen has validated **BRCA1** as a gene with **strong clinical actionability** for cancer risk management. [Source: Clinvar, Reference: rs879254116] [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
 
 **ClinGen Expert Panel Validity**
-* BRCA1 validity: **True** (ClinGen expert panel has validated BRCA1 as a gene with clinically actionable pathogenic variants). [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
+* ClinGen expert panel has validated **BRCA1** as a gene with **strong clinical validity** for hereditary breast and ovarian cancer risk, confirming its use in clinical decision-making for cancer screening and risk reduction strategies. [Source: ClinGen, Reference: BRCA1 (HGNC:1100)]
 
 **Cancer Screening Protocol**
-* For individuals assigned female at birth (AFAB) who are carriers of a **BRCA1 P/LP variant**, the following cancer screening protocol is recommended according to NCCN guidelines: [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **Breast Awareness**: Train in breast awareness with regular monthly practice, beginning at **25 years of age**. [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **Clinical Breast Examinations**: Every **6 to 12 months**, beginning at **25 years of age**. [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **Breast MRI Screening**: Annual breast MRI with contrast (to be performed on days **7 to 15 of the menstrual cycle** for premenopausal individuals), beginning at **25 years of age**. If MRI is unavailable, annual mammograms may be considered. [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **Combined Digital Mammography and Digital Breast Tomosynthesis (DBT)**: Starting at **30 years of age**, alternate between annual digital mammography and MRI. DBT improves cancer detection and reduces false-positive rates while minimizing radiation exposure. [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **Bilateral Salpingo-Oophorectomy (BSO)**: Consider prophylactic BSO between **35 and 40 years of age** or upon completion of childbearing, due to elevated risk of ovarian cancer. Post-BSO, hormone replacement therapy (HRT) may be considered for symptom management. [Source: Genetic-Familial High-Risk Assessment, Reference: Bilateral Salpingo-Oophorectomy] [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **MRI Surveillance for Breast Cancer**: Annual MRI surveillance has been associated with a reduction in breast cancer mortality in **BRCA1 P/LP carriers** (HR, 0.20; 92% sensitivity, 87% specificity). [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
-* **Prostate Cancer Screening**: For individuals assigned male at birth (AMAB), consider annual prostate-specific antigen (PSA) testing and digital rectal exams starting at **40 years of age**. [Source: Genetic-Familial High-Risk Assessment, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* For individuals assigned female at birth (AFAB) with a **P/LP BRCA1** variant, **breast cancer risk management** includes **monthly breast self-exams** starting at **25 years of age** and **clinical breast exams every 6–12 months** beginning at **25 years of age**. [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* **Annual breast MRI with contrast** (on days 7–15 of the menstrual cycle for premenopausal individuals) is recommended starting at **25 years of age**. If MRI is unavailable, **annual mammography** may be considered, though MRI is preferred due to higher sensitivity for BRCA1-associated tumors. [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* For individuals **under 30 years of age**, **MRI is preferred over mammography** due to lower sensitivity of mammography in detecting BRCA1-associated tumors and concerns about radiation exposure from mammography. [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* **Ovarian cancer screening** is not recommended due to lack of effective screening tools. **Risk-reducing salpingo-oophorectomy (RRSO)** is an option for ovarian cancer prevention, particularly for those with a strong family history or high-risk profile. RRSO is most effective when performed **before age 40** for BRCA1 carriers. [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* **Salpingectomy** (removal of fallopian tubes with delayed oophorectomy) is an investigational option for premenopausal patients not yet ready for RRSO, as it may reduce ovarian cancer risk by removing the primary site of tubal intraepithelial carcinoma (TIC). [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* **Pancreatic cancer screening** is not routinely recommended but may be considered in select high-risk individuals (e.g., family history of pancreatic cancer) via **annual MRI/MRCP or EUS** starting at **50 years of age** or earlier if indicated. [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
+* **Prostate cancer screening** for individuals assigned male at birth (AMAB) with a BRCA1 variant may include **annual PSA testing** starting at **40 years of age**, though guidelines vary by clinical context. [Source: Detection, Prevention, and Risk Reduction, Reference: NCCN Guidelines Version 3.2026 Genetic/Familial High-Risk...]
 ----------------
 
 [Citation] Verified DB chunks: 3 | Verified PDF chunks: 6 → confidence: high

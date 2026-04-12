@@ -22,5 +22,12 @@ app = FastAPI(
 
 app.include_router(router)
 
+@app.on_event("startup")
+def startup_event():
+    from app.db.pool import _get_pool
+    _get_pool()
+    log.info("Connection pool pre-warmed on startup")
+
+
 if __name__=="__main__":
     uvicorn.run("app.main:app", port=5656, reload=True)

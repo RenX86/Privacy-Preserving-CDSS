@@ -72,21 +72,33 @@ def get_allele_frequency(rsid: str) -> dict | None:
         data = response.json()
 
         if "errors" in data:
-            print(f"  [gnomAD] API error for {gnomad_id}: {data['errors'][0].get('message')}")
+            error_msg = data['errors'][0].get('message', '')
+            print(f"  [gnomAD] API error for {gnomad_id}: {error_msg}")
+            if "not found" in error_msg.lower() or "not exist" in error_msg.lower():
+                return {"found": False, "rsid": rsid}
             return None
 
         variant = data.get("data", {}).get("variant")
         if not variant:
             print(f"  [gnomAD] Variant {gnomad_id} not found in gnomAD r4")
-            return None
+            return {"found": False, "rsid": rsid}
 
         genome = variant.get("genome") or {}
         exome  = variant.get("exome")  or {}
-        af = genome.get("af") or exome.get("af") or 0.0
+        genome_af = genome.get("af")
+        exome_af  = exome.get("af")
+        
+        if genome_af is not None:
+            af = genome_af
+        elif exome_af is not None:
+            af = exome_af
+        else:
+            af = 0.0 
 
         print(f"  [gnomAD] AF={af:.6f} for {gnomad_id}")
 
         return {
+            "found":            True,
             "rsid":             rsid,
             "gnomad_id":        gnomad_id,
             "allele_frequency": af,

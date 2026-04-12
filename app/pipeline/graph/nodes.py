@@ -14,6 +14,23 @@ from app.api.schemas import Citation
 from app.pipeline.generation.self_rag import generate_answer
 from app.pipeline.generation.citation_enforcer import extract_citations, fix_hallucinated_citations
 
+def _gene_mentioned(gene_lower: str, text_lower: str) -> bool:
+    """
+    Check if the target gene is referenced in the chunk text.
+    Handles combined notations like BRCA1/2, BRCA1/BRCA2, BRCA 1/2.
+    """
+    if gene_lower in text_lower:
+        return True
+
+    # Handle BRCA1/2 combined notation for BRCA2 queries
+    if gene_lower == "brca2":
+        return any(p in text_lower for p in ["brca1/2", "brca1/brca2", "brca 1/2"])
+    if gene_lower == "brca1":
+        return any(p in text_lower for p in ["brca1/2", "brca1/brca2", "brca 1/2"])
+
+    return False
+
+
 def decompose_node(state: CDSSGraphState) -> dict:
 
     query = state["query"]
@@ -36,16 +53,24 @@ def retrieve_node(state: CDSSGraphState) -> dict:
                     # Only call gnomAD if the feature flag is enabled (H-5 privacy fix)
                     if settings.ENABLE_GNOMAD_LOOKUP:
                         freq_data = get_allele_frequency(rsid)
-                        if freq_data:
-                            freq_text = f"Population frequency for {rsid}: AF={freq_data['allele_frequency']:.6f}. {'Variant is common in population (AF >= 5%).' if freq_data['is_common'] else 'Variant is rare in population.'}"
-                            trusted_chunks.append(RetrievedChunk(text=freq_text, source="gnomAD", reference=rsid))
-                        else:
+                        if freq_data and freq_data.get("found"):
+                            # Variant exists in gnomAD — report its frequency
+                            freq_text = (
+                                f"Population frequency for {rsid}: "
+                                f"AF={freq_data['allele_frequency']:.8f}. "
+                                f"{'Variant is common in population (AF >= 5%).' if freq_data['is_common'] else 'Variant is rare in population.'}"
+                            )
                             trusted_chunks.append(RetrievedChunk(
-                                text=f"gnomAD lookup for {rsid}: Variant not found in gnomAD r4 population database. Variant is absent from population frequency data.",
+                                text=freq_text, source="gnomAD", reference=rsid
+                            ))
+                        elif freq_data and not freq_data.get("found"):
+                            # Variant is NOT in gnomAD — clinically different from AF=0
+                            trusted_chunks.append(RetrievedChunk(
+                                text=f"gnomAD lookup for {rsid}: Variant NOT FOUND in gnomAD r4 population database. No allele frequency data exists. DO NOT report any allele frequency value for this variant.",
                                 source="gnomAD",
                                 reference=rsid
                             ))
-
+                            # If freq_data is None entirely → gnomAD API call failed, don't add a chunk
                     trusted_chunks.append(from_postgres_result(result))
 
             if gene and not rsids:
@@ -67,9 +92,9 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
     for sq in state["sub_queries"]:
         if sq.target == "vector_db":
             if sq.query_type == "protocol_retrieval":
-                results = multi_query_search(sq.text, top_k=15, category_filter="protocol")
+                results = multi_query_search(sq.text, top_k=15, category_filter="treatment_protocol")
             elif sq.query_type == "screening_retrieval":
-                results = multi_query_search(sq.text, top_k=15, category_filter="screening")
+                 results = multi_query_search(sq.text, top_k=15, category_filter="screening_protocol")
             else:
                 results = multi_query_search(sq.text, top_k=15)
 
@@ -120,8 +145,9 @@ def evaluate_node(state: CDSSGraphState) -> dict:
         source_counts = {}
         for chunk in all_passing:
             source   = chunk.source
-            is_nccn  = "nccn" in source.lower() or "genetic" in source.lower()
-            mentions_gene = gene_lower and gene_lower in chunk.text.lower()
+            DB_SOURCES = {"Clinvar", "gnomAD", "ClinGen"}
+            is_nccn = source not in DB_SOURCES
+            mentions_gene = gene_lower and _gene_mentioned(gene_lower, chunk.text.lower())
             if is_nccn and gene_lower and not mentions_gene:
                 continue
             if source_counts.get(source, 0) < 6:
@@ -143,7 +169,6 @@ def citation_node(state: CDSSGraphState) -> dict:
 
     final = state["draft_answer"]
     verified_chunks = state.get("verified_chunks", [])
-    trusted_chunks = state.get("trusted_chunks", [])
 
     # Fix any inline hallucinated formatting before we extract
     fixed_final_answer = fix_hallucinated_citations(final, verified_chunks)

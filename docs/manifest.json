@@ -1,13 +1,13 @@
 {
-  "Breast.pdf": {
-    "source": "NCCN_Breast_v2_2026",
-    "category": "protocol",
+  "NCCN_Breast_v2_2026.pdf": {
+    "source": "Treatment by Cancer Type",
+    "category": "treatment_protocol",
     "gene": null,
     "parser": "docling"
   },
   "Genetic-Familial High-Risk Assessment Breast Ovarian PancreaticandProstate.pdf": {
-    "source": "Genetic-Familial High-Risk Assessment",
-    "category": "screening",
+    "source": "Detection, Prevention, and Risk Reduction",
+    "category": "screening_protocol",
     "gene": null,
     "parser": "docling"
   }

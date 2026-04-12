@@ -7,7 +7,8 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
         "Clinvar": [r'\bclinvar\b', r'\bclassified as\b', r'\brs\d+\b', r'\bclinical significance\b'],
         "ClinGen": [r'\bclingen\b', r'\bexpert panel\b', r'\bgene-disease validity\b', r'\bactionability\b'],
         "gnomAD":  [r'\bgnomad\b', r'\ballele.?frequency\b', r'\bpopulation frequency\b', r'\babsent from controls\b', r'\brare in population\b'],
-        "NCCN":    [r'\bnccn\b', r'\bscreening\b', r'\bmastectomy\b', r'\bsurveillance\b', r'\bmri\b', r'\bmammography\b', r'\bprotocol\b']
+        "Treatment": [r'\bchemotherapy\b', r'\bradiotherapy\b', r'\bneoadjuvant\b', r'\bsurgery\b', r'\bstaging\b', r'\bregimen\b'],
+        "Detection": [r'\bnccn\b', r'\bscreening\b', r'\bmastectomy\b', r'\bsurveillance\b', r'\bmri\b', r'\bmammography\b', r'\bprotocol\b', r'\brrso\b', r'\bsalpingo\b'],
     }
 
 
@@ -24,7 +25,7 @@ def fix_hallucinated_citations(answer_text: str, used_chunks: list[RetrievedChun
     # Build a set of known real source names (lowercase) for quick lookup
     known_sources_lower = {s.lower(): s for s in source_to_refs.keys()}
 
-    inline_pattern = re.compile(r'\[Source:\s*([^,\]]+),\s*(?:Reference:\s*)?([^\]]+)\]', re.IGNORECASE)
+    inline_pattern = re.compile(r'\[Source:\s*(.+?),\s*Reference:\s*([^\]]+)\]', re.IGNORECASE)
 
     matches = list(inline_pattern.finditer(answer_text))
     for match in reversed(matches):
@@ -84,7 +85,7 @@ def extract_citations(answer_text: str, used_chunks: list[RetrievedChunk]) -> li
     citations = []
     seen = set()
 
-    inline_pattern = re.compile(r'\[Source:\s*([^,\]]+),\s*(?:Reference:\s*)?([^\]]+)\]', re.IGNORECASE)
+    inline_pattern = re.compile(r'\[Source:\s*(.+?),\s*Reference:\s*([^\]]+)\]', re.IGNORECASE)
     for match in inline_pattern.finditer(answer_text):
         source = match.group(1).strip()
         reference = match.group(2).strip()

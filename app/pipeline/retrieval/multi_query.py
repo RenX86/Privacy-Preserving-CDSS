@@ -182,7 +182,7 @@ def multi_query_search(
     # Route to dedicated prompt per category
     if category_filter == "screening_protocol":
         expand_type = "screening_retrieval"
-    elif category_filter == "protocol":
+    elif category_filter == "treatment_protocol":
         expand_type = "protocol_retrieval"
     else:
         expand_type = "general"
