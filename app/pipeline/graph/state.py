@@ -13,11 +13,10 @@ class CDSSGraphState(TypedDict):
     # can append their results rather than the second one overwriting the first
     trusted_chunks:   Annotated[list[RetrievedChunk], operator.add]
     candidate_chunks: Annotated[list[RetrievedChunk], operator.add]
-
+    _trace:           Annotated[list, operator.add]
 
     verified_chunks: list[RetrievedChunk]
     draft_answer: str
-
 
     final_answer: str
     citations: list[Citation]

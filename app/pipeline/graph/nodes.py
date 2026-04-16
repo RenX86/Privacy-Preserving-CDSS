@@ -1,4 +1,5 @@
 import re
+import time
 from app.config import settings
 from app.pipeline.graph.state import CDSSGraphState
 
@@ -32,15 +33,25 @@ def _gene_mentioned(gene_lower: str, text_lower: str) -> bool:
 
 
 def decompose_node(state: CDSSGraphState) -> dict:
-
+    t0 = time.perf_counter()
     query = state["query"]
     gene = extract_gene_from_query(query)
     sub_queries = decompose_query(query, gene=gene)   # pass gene for focused sub-query text
 
-    return {"gene": gene, "sub_queries": sub_queries}
+    elapsed = int((time.perf_counter() - t0) * 1000)
+    return {
+        "gene": gene, 
+        "sub_queries": sub_queries,
+        "_trace": [{
+            "node": "Decomposer",
+            "duration_ms": elapsed,
+            "summary": f"Extracted gene '{gene}'. Generated {len(sub_queries)} sub-queries.",
+            "data": {"gene": gene, "sub_queries": [{"text": sq.text, "target": sq.target, "type": sq.query_type} for sq in sub_queries]}
+        }]
+    }
 
 def retrieve_node(state: CDSSGraphState) -> dict:
-
+    t0 = time.perf_counter()
     trusted_chunks = []
     gene = state.get("gene")
 
@@ -83,10 +94,20 @@ def retrieve_node(state: CDSSGraphState) -> dict:
             for r in results: 
                 trusted_chunks.append(from_clingen_result(r, gene))
 
-    return {"trusted_chunks": trusted_chunks}
+    elapsed = int((time.perf_counter() - t0) * 1000)
+    return {
+        "trusted_chunks": trusted_chunks,
+        "_trace": [{
+            "node": "DB_Retriever",
+            "duration_ms": elapsed,
+            "summary": f"Retrieved {len(trusted_chunks)} chunks from structured DBs.",
+            "data": {"chunks_retrieved": len(trusted_chunks)}
+        }]
+    }
 
 
 def retrieve_pdf_node(state: CDSSGraphState) -> dict:
+    t0 = time.perf_counter()
     candidate_chunks = []
 
     for sq in state["sub_queries"]:
@@ -110,10 +131,20 @@ def retrieve_pdf_node(state: CDSSGraphState) -> dict:
 
             candidate_chunks.extend(batch)
 
-    return {"candidate_chunks": candidate_chunks}
+    elapsed = int((time.perf_counter() - t0) * 1000)
+    return {
+        "candidate_chunks": candidate_chunks,
+        "_trace": [{
+            "node": "PDF_Retriever",
+            "duration_ms": elapsed,
+            "summary": f"Retrieved {len(candidate_chunks)} candidate chunks from PDF vector index.",
+            "data": {"chunks_retrieved": len(candidate_chunks)}
+        }]
+    }
 
 
 def evaluate_node(state: CDSSGraphState) -> dict:
+    t0 = time.perf_counter()
     candidate_chunks = state.get("candidate_chunks", [])
     trusted_chunks   = state.get("trusted_chunks", [])
     query            = state["query"]
@@ -155,18 +186,36 @@ def evaluate_node(state: CDSSGraphState) -> dict:
                 source_counts[source] = source_counts.get(source, 0) + 1
 
     verified = trusted_chunks + filtered_candidates
-    return {"verified_chunks": verified}
+    elapsed = int((time.perf_counter() - t0) * 1000)
+    return {
+        "verified_chunks": verified,
+        "_trace": [{
+            "node": "Evaluator",
+            "duration_ms": elapsed,
+            "summary": f"CRAG passed {len(filtered_candidates)} PDF chunks. Total verified: {len(verified)}.",
+            "data": {"verified_chunks_count": len(verified), "pdf_chunks_passed": len(filtered_candidates)}
+        }]
+    }
 
 def generate_node(state: CDSSGraphState) -> dict:
-
+    t0 = time.perf_counter()
     query = state["query"]
     verified = state.get("verified_chunks", [])
 
     draft = generate_answer(query, verified)
-    return {"draft_answer": draft}
+    elapsed = int((time.perf_counter() - t0) * 1000)
+    return {
+        "draft_answer": draft,
+        "_trace": [{
+            "node": "Generator",
+            "duration_ms": elapsed,
+            "summary": "Drafted initial response via LLM.",
+            "data": {"answer_length": len(draft)}
+        }]
+    }
 
 def citation_node(state: CDSSGraphState) -> dict:
-
+    t0 = time.perf_counter()
     final = state["draft_answer"]
     verified_chunks = state.get("verified_chunks", [])
 
@@ -197,5 +246,16 @@ def citation_node(state: CDSSGraphState) -> dict:
 
     print(f"[Citation] Verified DB chunks: {db_count} | Verified PDF chunks: {pdf_count} → confidence: {confidence}")
 
+    elapsed = int((time.perf_counter() - t0) * 1000)
     # Return the updated final_answer along with citations
-    return {"final_answer": fixed_final_answer, "citations": citations, "confidence": confidence}
+    return {
+        "final_answer": fixed_final_answer, 
+        "citations": citations, 
+        "confidence": confidence,
+        "_trace": [{
+            "node": "Enforcer",
+            "duration_ms": elapsed,
+            "summary": f"Extracted {len(citations)} citations. Confidence: {confidence}.",
+            "data": {"confidence": confidence, "citations_extracted": len(citations)}
+        }]
+    }

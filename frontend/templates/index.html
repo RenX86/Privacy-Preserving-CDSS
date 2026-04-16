@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy-Preserving CDSS</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🧬 PRIVACY-PRESERVING CDSS</h1>
+      <p class="subtitle">Hybrid RAG · Local LLM · Zero Hallucination</p>
+    </header>
+
+    <div class="query-box">
+      <textarea id="queryInput" placeholder="Enter clinical scenario or variant...">What is the clinical significance of rs879254116 in BRCA1, and what cancer screening protocol should the patient follow according to NCCN guidelines. Also confirm the ClinGen expert panel validity for BRCA1.</textarea>
+      <button id="submitBtn" onclick="runQuery()">SUBMIT QUERY</button>
+    </div>
+
+    <div id="loading" class="loading">
+      Running Pipeline Nodes (Local LLM generation may take 15-45s)...
+    </div>
+
+    <div id="results" class="results">
+      <h2 class="panel-title">PIPELINE TRACE <span id="totalTime" class="confidence-badge" style="color:var(--text-muted)"></span></h2>
+      
+      <div class="pipeline-graph" id="nodeGraph">
+        <!-- Nodes injected here via JS -->
+      </div>
+
+      <div class="detail-panel">
+        <h3 class="detail-title" id="detailTitle">Click a node to view internal State</h3>
+        <div class="detail-content" id="detailContent">
+          Select any node above to inspect exactly what the pipeline did during that step.
+        </div>
+      </div>
+
+      <div class="output-grid">
+        <div class="clinical-output">
+          <h2 class="panel-title">
+            CLINICAL SUMMARY 
+            <span class="confidence-badge">CONFIDENCE: <span id="confidenceValue">-</span></span>
+          </h2>
+          <div id="markdownOutput"></div>
+        </div>
+        
+        <div class="data-sources">
+          <h2 class="panel-title">EVIDENCE SOURCES</h2>
+          <div id="sourcesList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let traceData = [];
+
+    async function runQuery() {
+      const q = document.getElementById("queryInput").value;
+      if (!q) return;
+
+      document.getElementById("submitBtn").disabled = true;
+      document.getElementById("loading").classList.add("active");
+      document.getElementById("results").classList.remove("active");
+
+      try {
+        const response = await fetch("/query/detailed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q })
+        });
+
+        const data = await response.json();
+        renderResults(data);
+      } catch (err) {
+        alert("Error: " + err.message);
+      } finally {
+        document.getElementById("submitBtn").disabled = false;
+        document.getElementById("loading").classList.remove("active");
+      }
+    }
+
+    function renderResults(data) {
+      document.getElementById("results").classList.add("active");
+      document.getElementById("totalTime").innerText = (data.total_duration_ms / 1000).toFixed(2) + "s";
+      document.getElementById("confidenceValue").innerText = data.confidence.toUpperCase();
+      
+      // Render markdown
+      document.getElementById("markdownOutput").innerHTML = marked.parse(data.answer);
+
+      // Render Sources
+      const sList = document.getElementById("sourcesList");
+      sList.innerHTML = "";
+      data.citations.forEach((c, idx) => {
+        sList.innerHTML += `<div class="source-item"><span class="source-tag">[${idx+1}] ${c.source}</span><br>${c.reference}</div>`;
+      });
+
+      // Highlight inline citations in text
+      const html = document.getElementById("markdownOutput").innerHTML;
+      const highlighted = html.replace(/\[Source:\s*(.+?),\s*Reference:\s*([^\]]+)\]/g, (match, src, ref) => {
+        let tag = src;
+        for (let i = 0; i < data.citations.length; i++) {
+          if (data.citations[i].source === src && data.citations[i].reference === ref) {
+            tag = "Source " + (i+1);
+            break;
+          }
+        }
+        return `<span class="citation-badge" title="${src} - ${ref}">${tag}</span>`;
+      });
+      document.getElementById("markdownOutput").innerHTML = highlighted;
+
+      // Render Trace Graph
+      traceData = data.trace || [];
+      const graph = document.getElementById("nodeGraph");
+      graph.innerHTML = "";
+      
+      traceData.forEach((node, idx) => {
+        const div = document.createElement("div");
+        div.className = "node";
+        div.id = `node-${idx}`;
+        div.onclick = () => showNodeDetail(idx);
+        div.innerHTML = `
+          <div class="node-name">${node.node.toUpperCase()}</div>
+          <div class="node-time">${node.duration_ms}ms</div>
+        `;
+        graph.appendChild(div);
+
+        if (idx < traceData.length - 1) {
+          const arrow = document.createElement("div");
+          arrow.className = "arrow";
+          arrow.innerText = "→";
+          graph.appendChild(arrow);
+        }
+      });
+      
+      if (traceData.length > 0) {
+          showNodeDetail(0);
+      }
+    }
+
+    function showNodeDetail(idx) {
+      document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+      document.getElementById(`node-${idx}`).classList.add('active');
+
+      const node = traceData[idx];
+      document.getElementById("detailTitle").innerText = `${node.node.toUpperCase()} — ${node.summary}`;
+      
+      let html = `<pre>${JSON.stringify(node.data, null, 2)}</pre>`;
+      document.getElementById("detailContent").innerHTML = html;
+    }
+  </script>
+</body>
+</html>

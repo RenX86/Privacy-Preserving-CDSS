@@ -13,3 +13,25 @@ class QueryResponse(BaseModel):
     citations: List[Citation]
     confidence: str
     safe_failure: bool
+
+class ChunkDetail(BaseModel):
+    text: str
+    source: str
+    reference: str
+    score: float
+    grade: str
+
+class NodeTrace(BaseModel):
+    node: str
+    duration_ms: int
+    summary: str
+    data: dict
+
+class InstrumentedResponse(BaseModel):
+    answer: str
+    citations: List[Citation]
+    confidence: str
+    safe_failure: bool
+    gene: str | None
+    total_duration_ms: int
+    trace: List[NodeTrace]
