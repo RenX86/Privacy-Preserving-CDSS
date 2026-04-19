@@ -1,7 +1,7 @@
 [
   {
     "id": "TC-001",
-    "description": "Full multi-source BRCA1 query: ClinVar + gnomAD (not found) + ClinGen + NCCN screening",
+    "description": "Full multi-source BRCA1: ClinVar + gnomAD (not found) + ClinGen + NCCN screening",
     "query": "What is the clinical significance of rs879254116 in BRCA1, and what cancer screening protocol should the patient follow according to NCCN guidelines. Also confirm the ClinGen expert panel validity for BRCA1.",
     "expected": {
       "gene": "BRCA1",
@@ -10,13 +10,13 @@
       "requires_clingen": true,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["mammography", "MRI", "salpingo-oophorectomy", "breast"],
-      "forbidden_content": ["frameshift", "missense", "de novo", "computational prediction", "colonoscopy", "MLH1"],
+      "forbidden_content": ["frameshift", "missense", "de novo", "computational prediction", "colonoscopy", "MLH1", "Lynch"],
       "expected_citations_contain": ["Clinvar", "ClinGen", "Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-002",
-    "description": "Variant-only BRCA1 query — rs879254116, no screening. Tests system doesn't volunteer NCCN protocols.",
+    "description": "Variant-only BRCA1 query — no screening requested. Tests system doesn't volunteer NCCN protocols.",
     "query": "What is the clinical significance of rs879254116 in BRCA1?",
     "expected": {
       "gene": "BRCA1",
@@ -31,7 +31,7 @@
   },
   {
     "id": "TC-003",
-    "description": "BRCA2 gene-filter + ClinGen validity test — no rsID. Query explicitly asks ClinGen to trigger the lookup.",
+    "description": "BRCA2 gene-filter + ClinGen — broadened forbidden to catch Lynch/GI cross-contamination.",
     "query": "What cancer screening protocol should a patient with a pathogenic BRCA2 variant follow according to NCCN? Also confirm ClinGen expert panel validity for BRCA2.",
     "expected": {
       "gene": "BRCA2",
@@ -40,13 +40,13 @@
       "requires_clingen": true,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["mammography", "MRI", "breast"],
-      "forbidden_content": ["allele frequency", "colonoscopy", "MLH1"],
+      "forbidden_content": ["allele frequency", "colonoscopy", "colon cancer", "gastrointestinal", "MLH1", "Lynch syndrome"],
       "expected_citations_contain": ["ClinGen", "Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-004",
-    "description": "Non-existent variant in TP53 — not in DB. Tests safe-failure mode without hallucination.",
+    "description": "Non-existent variant in TP53 — safe-failure mode, no hallucination of classification.",
     "query": "A patient has the variant rs12345678910 in TP53. What is the clinical significance?",
     "expected": {
       "gene": "TP53",
@@ -61,7 +61,7 @@
   },
   {
     "id": "TC-005",
-    "description": "BRCA1 5382insC (rs28897696) — real variant. Tests gnomAD citation when found.",
+    "description": "BRCA1 rs28897696 (5382insC) — real variant with known gnomAD frequency. Tests AF reporting path.",
     "query": "Provide the clinical summary and population frequency for rs28897696 in BRCA1.",
     "expected": {
       "gene": "BRCA1",
@@ -76,7 +76,7 @@
   },
   {
     "id": "TC-006",
-    "description": "Cross-gene slippage test — asks if BRCA1 requires colonoscopies. No ClinGen lookup expected (no clingen keyword).",
+    "description": "Cross-gene slippage — BRCA1 + colonoscopy trap. Broadened forbidden to catch all colon/GI/Lynch variants.",
     "query": "Does a BRCA1 pathogenic mutation require regular colonoscopies according to NCCN?",
     "expected": {
       "gene": "BRCA1",
@@ -85,13 +85,13 @@
       "requires_clingen": false,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["mammography", "MRI"],
-      "forbidden_content": ["colonoscopy is recommended", "MLH1", "Lynch syndrome", "FAP"],
+      "forbidden_content": ["colonoscopy is recommended", "colonoscopy for BRCA", "MLH1", "Lynch syndrome", "FAP", "gastrointestinal"],
       "expected_citations_contain": ["Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-007",
-    "description": "BRCA2 variant rs879254116 reused for BRCA2 ClinGen test — explicitly asks ClinGen validity.",
+    "description": "BRCA1 variant + explicit ClinGen validity — tests ClinGen is triggered by 'expert panel' keyword.",
     "query": "What is the clinical significance of rs879254116 in BRCA1? Also check ClinGen expert panel validity for BRCA1.",
     "expected": {
       "gene": "BRCA1",
@@ -106,7 +106,7 @@
   },
   {
     "id": "TC-008",
-    "description": "Prophylactic surgery query for BRCA1 — no clingen keyword so no ClinGen lookup expected.",
+    "description": "Prophylactic surgery for BRCA1 — must NOT include Lynch-specific surgeries (colectomy, gastrectomy).",
     "query": "Are there any prophylactic surgeries recommended for BRCA1 carriers according to NCCN?",
     "expected": {
       "gene": "BRCA1",
@@ -121,22 +121,22 @@
   },
   {
     "id": "TC-009",
-    "description": "MLH1 ClinGen validity + NCCN screening — explicitly asks ClinGen to trigger the API call.",
-    "query": "What are the NCCN colorectal cancer screening guidelines for an MLH1 carrier? Also confirm ClinGen expert panel validity for MLH1.",
+    "description": "MLH1 ClinGen validity ONLY — NCCN expectation removed because Lynch syndrome PDF is NOT indexed.",
+    "query": "Is MLH1 considered a clinically valid gene for hereditary cancer according to ClinGen expert panel? What is the actionability status?",
     "expected": {
       "gene": "MLH1",
       "variant_classification": null,
       "requires_gnomad": false,
       "requires_clingen": true,
-      "requires_nccn_screening": true,
-      "expected_screening_keywords": ["colonoscopy"],
-      "forbidden_content": ["salpingo-oophorectomy", "BRCA1 specific", "mammography"],
+      "requires_nccn_screening": false,
+      "expected_screening_keywords": [],
+      "forbidden_content": ["salpingo-oophorectomy", "mammography", "BRCA1 specific", "frameshift"],
       "expected_citations_contain": ["ClinGen"]
     }
   },
   {
     "id": "TC-010",
-    "description": "gnomAD not-found guardrail test — explicitly asks for frequency of a variant absent from gnomAD.",
+    "description": "gnomAD not-found guardrail — variant absent from gnomAD r4. Must not invent any AF value.",
     "query": "Provide the exact gnomAD allele frequency for rs879254116 in BRCA1. If not present, tell me clearly.",
     "expected": {
       "gene": "BRCA1",
@@ -151,7 +151,7 @@
   },
   {
     "id": "TC-011",
-    "description": "BRCA1 RRSO age threshold — no ClinGen keyword so only NCCN PDF expected.",
+    "description": "BRCA1 RRSO age threshold — tests exact age retrieval from NCCN table rows.",
     "query": "At what age does NCCN recommend risk-reducing salpingo-oophorectomy for BRCA1 carriers?",
     "expected": {
       "gene": "BRCA1",
@@ -166,7 +166,7 @@
   },
   {
     "id": "TC-012",
-    "description": "Ovarian cancer screening test — no ClinGen keyword so only NCCN PDF expected.",
+    "description": "Ovarian cancer screening — NCCN does NOT recommend routine transvaginal ultrasound for BRCA1.",
     "query": "Does NCCN recommend routine ovarian cancer screening such as transvaginal ultrasound for BRCA1 carriers?",
     "expected": {
       "gene": "BRCA1",
@@ -175,13 +175,13 @@
       "requires_clingen": false,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["salpingo-oophorectomy"],
-      "forbidden_content": ["colonoscopy", "MLH1"],
+      "forbidden_content": ["colonoscopy", "MLH1", "Lynch"],
       "expected_citations_contain": ["Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-013",
-    "description": "Male BRCA1 carrier — no ClinGen keyword so only NCCN PDF expected.",
+    "description": "Male BRCA1 carrier — prostate and male breast screening; must NOT include female-specific surgeries.",
     "query": "What cancer screening is recommended for a male BRCA1 carrier according to NCCN?",
     "expected": {
       "gene": "BRCA1",
@@ -190,13 +190,13 @@
       "requires_clingen": false,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["prostate", "breast"],
-      "forbidden_content": ["salpingo-oophorectomy", "ovarian", "colonoscopy"],
+      "forbidden_content": ["salpingo-oophorectomy", "colonoscopy", "MLH1"],
       "expected_citations_contain": ["Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-014",
-    "description": "Breast MRI age threshold test — exact age 25 from NCCN chunk.",
+    "description": "Breast MRI age threshold — exact age 25 must appear, not hallucinated from LLM memory.",
     "query": "At what age does NCCN recommend annual breast MRI for BRCA1 carriers?",
     "expected": {
       "gene": "BRCA1",
@@ -211,7 +211,7 @@
   },
   {
     "id": "TC-015",
-    "description": "ACMG code hallucination test — LLM must NOT invent PS4, PM2 evidence codes.",
+    "description": "ACMG code hallucination — LLM must NOT invent PS4, PM2, PVS1 evidence codes.",
     "query": "What is the ACMG classification and evidence basis for rs879254116 in BRCA1?",
     "expected": {
       "gene": "BRCA1",
@@ -226,7 +226,7 @@
   },
   {
     "id": "TC-016",
-    "description": "Pancreatic cancer screening for BRCA2 + ClinGen — query explicitly mentions ClinGen.",
+    "description": "BRCA2 pancreatic surveillance + ClinGen — tests pancreatic-specific retrieval.",
     "query": "Does NCCN recommend pancreatic cancer surveillance for BRCA2 carriers? Also confirm ClinGen actionability for BRCA2.",
     "expected": {
       "gene": "BRCA2",
@@ -241,7 +241,7 @@
   },
   {
     "id": "TC-017",
-    "description": "Computational prediction hallucination test — LLM must not invent REVEL/CADD scores.",
+    "description": "Computational prediction hallucination — LLM must NOT invent REVEL, CADD, PolyPhen scores.",
     "query": "What computational tools support the pathogenicity of rs879254116 in BRCA1?",
     "expected": {
       "gene": "BRCA1",
@@ -256,7 +256,7 @@
   },
   {
     "id": "TC-018",
-    "description": "BRCA1 bilateral mastectomy — no ClinGen keyword so only NCCN PDF expected.",
+    "description": "BRCA1 bilateral mastectomy — must appear in NCCN output, no Lynch surgeries.",
     "query": "Is bilateral mastectomy an option for BRCA1 carriers according to NCCN?",
     "expected": {
       "gene": "BRCA1",
@@ -271,7 +271,7 @@
   },
   {
     "id": "TC-019",
-    "description": "ClinGen-only query — explicitly asks ClinGen to trigger the API call.",
+    "description": "ClinGen-only — BRCA1 validity isolation, no variant lookup triggered.",
     "query": "Is BRCA1 considered a gene with strong clinical validity for hereditary cancer according to ClinGen expert panel?",
     "expected": {
       "gene": "BRCA1",
@@ -286,7 +286,7 @@
   },
   {
     "id": "TC-020",
-    "description": "Full variant query for rs879254116 including gnomAD frequency — tests gnomAD not-found guard.",
+    "description": "gnomAD not-found guard — rs879254116 absent from gnomAD. Must report absent, not invent frequency.",
     "query": "What is the clinical significance and population frequency of rs879254116 in BRCA1?",
     "expected": {
       "gene": "BRCA1",
@@ -301,7 +301,7 @@
   },
   {
     "id": "TC-021",
-    "description": "Cross-cancer slippage — BRCA2 pancreatic only with ClinGen. Should not return Lynch/uterine/endometrial protocols.",
+    "description": "BRCA2 pancreatic cross-contamination — must NOT bleed Lynch/uterine/endometrial from other NCCN table rows.",
     "query": "What does NCCN say specifically about pancreatic cancer risk management for BRCA2 carriers? Confirm ClinGen expert panel validity.",
     "expected": {
       "gene": "BRCA2",
@@ -310,13 +310,13 @@
       "requires_clingen": true,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["pancreatic"],
-      "forbidden_content": ["uterine", "endometrial", "MLH1", "Lynch", "FAP", "colonoscopy"],
+      "forbidden_content": ["uterine", "endometrial", "MLH1", "Lynch", "FAP", "colonoscopy", "gastrointestinal", "colon cancer"],
       "expected_citations_contain": ["ClinGen", "Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-022",
-    "description": "De novo hallucination test — LLM must not claim a variant arose de novo without family data.",
+    "description": "De novo hallucination — LLM must not claim inheritance pattern without family study data.",
     "query": "Did rs879254116 in BRCA1 arise de novo or is it inherited?",
     "expected": {
       "gene": "BRCA1",
@@ -331,7 +331,7 @@
   },
   {
     "id": "TC-023",
-    "description": "Multi-gene comparison — BRCA1 vs BRCA2 breast screening. ClinGen triggered by 'expert panel' keyword.",
+    "description": "Multi-gene comparison BRCA1 vs BRCA2 — ClinGen triggered by 'expert panel'. No Lynch bleed.",
     "query": "Compare the NCCN breast cancer screening recommendations for BRCA1 and BRCA2 carriers. Confirm ClinGen expert panel validity for both genes.",
     "expected": {
       "gene": "BRCA1",
@@ -340,13 +340,13 @@
       "requires_clingen": true,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["mammography", "MRI", "BRCA2"],
-      "forbidden_content": ["colonoscopy", "MLH1", "Lynch", "gastrectomy"],
+      "forbidden_content": ["colonoscopy", "MLH1", "Lynch", "gastrectomy", "gastrointestinal"],
       "expected_citations_contain": ["ClinGen", "Detection, Prevention, and Risk Reduction"]
     }
   },
   {
     "id": "TC-024",
-    "description": "Salpingectomy investigational option test — nuanced NCCN recommendation.",
+    "description": "Salpingectomy nuanced option — tests retrieval of a specific premenopausal NCCN recommendation.",
     "query": "What is the NCCN position on salpingectomy for premenopausal BRCA1 carriers?",
     "expected": {
       "gene": "BRCA1",
@@ -361,7 +361,7 @@
   },
   {
     "id": "TC-025",
-    "description": "Full BRCA2 stress test — variant rs80358720 + ClinGen + NCCN screening.",
+    "description": "Full BRCA2 stress test — variant + ClinGen + NCCN all required simultaneously.",
     "query": "What is the clinical significance of rs80358720 in BRCA2, confirm ClinGen validity, and what NCCN cancer screening should the patient follow?",
     "expected": {
       "gene": "BRCA2",
@@ -372,6 +372,51 @@
       "expected_screening_keywords": ["mammography", "MRI", "breast"],
       "forbidden_content": ["colonoscopy", "MLH1", "frameshift", "de novo", "REVEL"],
       "expected_citations_contain": ["Clinvar", "ClinGen", "Detection, Prevention, and Risk Reduction"]
+    }
+  },
+  {
+    "id": "TC-026",
+    "description": "PALB2 non-BRCA gene — tests gene filter, decomposer extraction, and NCCN screening retrieval for a moderate-risk gene.",
+    "query": "What NCCN cancer screening is recommended for a PALB2 pathogenic variant carrier? Also confirm ClinGen expert panel validity for PALB2.",
+    "expected": {
+      "gene": "PALB2",
+      "variant_classification": null,
+      "requires_gnomad": false,
+      "requires_clingen": true,
+      "requires_nccn_screening": true,
+      "expected_screening_keywords": ["mammography", "breast"],
+      "forbidden_content": ["colonoscopy", "MLH1", "Lynch", "gastrointestinal", "BRCA1 specific"],
+      "expected_citations_contain": ["ClinGen", "Detection, Prevention, and Risk Reduction"]
+    }
+  },
+  {
+    "id": "TC-027",
+    "description": "CHEK2 non-BRCA gene — ClinGen validity + NCCN breast screening. Tests moderate penetrance gene routing.",
+    "query": "Is CHEK2 a clinically valid gene for hereditary breast cancer according to ClinGen expert panel? What NCCN breast screening applies to CHEK2 carriers?",
+    "expected": {
+      "gene": "CHEK2",
+      "variant_classification": null,
+      "requires_gnomad": false,
+      "requires_clingen": true,
+      "requires_nccn_screening": true,
+      "expected_screening_keywords": ["mammography", "breast"],
+      "forbidden_content": ["colonoscopy", "MLH1", "Lynch", "gastrointestinal", "salpingo-oophorectomy"],
+      "expected_citations_contain": ["ClinGen", "Detection, Prevention, and Risk Reduction"]
+    }
+  },
+  {
+    "id": "TC-028",
+    "description": "ATM non-BRCA gene — ClinGen + NCCN. Tests another non-BRCA gene route and pancreatic/breast screening retrieval.",
+    "query": "What cancer surveillance does NCCN recommend for ATM pathogenic variant carriers? Also confirm ClinGen expert panel validity for ATM.",
+    "expected": {
+      "gene": "ATM",
+      "variant_classification": null,
+      "requires_gnomad": false,
+      "requires_clingen": true,
+      "requires_nccn_screening": true,
+      "expected_screening_keywords": ["breast", "mammography"],
+      "forbidden_content": ["colonoscopy", "MLH1", "Lynch", "gastrointestinal"],
+      "expected_citations_contain": ["ClinGen", "Detection, Prevention, and Risk Reduction"]
     }
   }
 ]

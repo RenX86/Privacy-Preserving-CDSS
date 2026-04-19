@@ -187,13 +187,27 @@ def evaluate_node(state: CDSSGraphState) -> dict:
 
     verified = trusted_chunks + filtered_candidates
     elapsed = int((time.perf_counter() - t0) * 1000)
+
+    # Expose FULL chunk texts so the evaluation runner has the same evidence
+    # the LLM used. Do NOT truncate here — truncated contexts cause unfair
+    # Faithfulness scores in Ragas. The Ragas runner handles its own
+    # token-budget truncation separately (_trim_contexts in run_ragas.py).
+    chunk_texts = [
+        {"source": c.source, "text": c.text}
+        for c in verified[:15]          # cap at 15 chunks for response size
+    ]
+
     return {
         "verified_chunks": verified,
         "_trace": [{
             "node": "Evaluator",
             "duration_ms": elapsed,
             "summary": f"CRAG passed {len(filtered_candidates)} PDF chunks. Total verified: {len(verified)}.",
-            "data": {"verified_chunks_count": len(verified), "pdf_chunks_passed": len(filtered_candidates)}
+            "data": {
+                "verified_chunks_count": len(verified),
+                "pdf_chunks_passed": len(filtered_candidates),
+                "chunk_texts": chunk_texts,         # used by run_ragas.py
+            }
         }]
     }
 

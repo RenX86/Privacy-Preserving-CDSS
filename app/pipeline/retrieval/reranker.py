@@ -13,11 +13,25 @@ class RetrievedChunk:
     def __repr__(self):
         return f"RetrievedChunk(source={self.source}, score={self.score:.3f})"
 
+import re as _re
+
+def _score_text(text: str) -> str:
+    """
+    Strip [Header_N: ...] metadata prefix before passing to BGE cross-encoder.
+    Bibliography chunks have keyword-rich headers (NCCN, BRCA1, RRSO...) that inflate
+    their reranker scores despite the body containing only citation lists.
+    The full text is still stored and sent to the LLM — only scoring is cleaned.
+    """
+    return _re.sub(r"^\[Header_\d+:.*?\]\n##[^\n]*\n?", "", text, flags=_re.DOTALL).strip()
+
+
 def rerank_chunks(query: str, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
     if not chunks:
         return []
 
-    pairs = [(query, chunk.text) for chunk in chunks]
+    # Score against body text only (header-stripped) — prevents bibliography
+    # chunks from scoring high due to keyword-rich metadata headers
+    pairs = [(query, _score_text(chunk.text)) for chunk in chunks]
     scores = _cross_encoder.predict(pairs)
 
     for chunk, score in zip(chunks, scores):

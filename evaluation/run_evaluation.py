@@ -254,6 +254,7 @@ def evaluate():
     results_dir.mkdir(exist_ok=True)
     timestamp  = time.strftime("%Y-%m-%d_%H-%M-%S")
     out_md     = results_dir / f"run_{timestamp}.md"
+    raw_out    = results_dir / f"raw_outputs_{timestamp}.json"   # consumed by run_ragas.py
     charts_dir = results_dir / f"run_{timestamp}_charts"
 
     print(f"\n{'='*70}")
@@ -263,10 +264,12 @@ def evaluate():
     print(f"{'='*70}\n")
 
     scores = []
+    _raw_api_responses = []    # parallel list — same index as cases
     for case in cases:
         desc = case.get("description", "")
         print(f"[{case['id']}] {desc[:70]}")
         data = call_api(case["query"])
+        _raw_api_responses.append(data)
         if data is None:
             scores.append({
                 "id": case["id"], "gene": case["expected"].get("gene"),
@@ -354,7 +357,33 @@ def evaluate():
     with open(out_md, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    print(f"\n[Results] → {out_md}")
+    # ── Save raw outputs for Ragas (Phase 2) ─────────────────────────────────
+    # Each entry contains everything run_ragas.py needs: query, contexts,
+    # draft_answer, final_answer. Run: python evaluation/run_ragas.py <this file>
+    raw_records = []
+    for case, data_resp in zip(cases, _raw_api_responses):
+        if data_resp is None:
+            continue
+        evaluator_node = next((n for n in data_resp.get("trace", []) if n["node"] == "Evaluator"), None)
+        chunk_texts = []
+        if evaluator_node:
+            chunk_texts = [
+                c["text"] for c in evaluator_node["data"].get("chunk_texts", [])
+            ]
+        raw_records.append({
+            "id":           case["id"],
+            "description":  case.get("description", ""),
+            "query":        case["query"],
+            "draft_answer": data_resp.get("draft_answer", ""),
+            "final_answer": data_resp.get("answer", ""),
+            "citations":    data_resp.get("citations", []),
+            "contexts":     chunk_texts,         # verified chunk texts — used as Ragas context
+        })
+    with open(raw_out, "w", encoding="utf-8") as f:
+        json.dump(raw_records, f, indent=2, ensure_ascii=False)
+
+    print(f"\n[Results]    → {out_md}")
+    print(f"[Raw outputs] → {raw_out}  (feed to run_ragas.py for Ragas scoring)")
     print(f"\nSummary: Hallu={avg_hallu:.1f}%  GuardrailEff={avg_geff:.1f}%  CitationAcc={avg_cite:.1f}%  KW={avg_kw:.1f}%\n")
 
     if CHARTS_AVAILABLE:

@@ -23,10 +23,17 @@ langgraph==1.0.10
 sentence-transformers==5.2.3
 ollama==0.6.1
 
-# ── HTTP Client (for ClinGen API) ─────────────────────────────────
+# ── HTTP Client ───────────────────────────────────────────────────
 httpx==0.28.1
 
 # ── PDF Processing ────────────────────────────────────────────────
-pymupdf==1.27.1
-pymupdf4llm==0.3.4
 docling==2.77.0
+
+# ── Evaluation (Phase 1) ──────────────────────────────────────────
+matplotlib                  # charts — pip install matplotlib
+
+# ── Evaluation (Phase 2 — Ragas, optional, run on-demand) ─────────
+# pip install ragas langchain-ollama datasets
+ragas
+langchain-ollama
+datasets
