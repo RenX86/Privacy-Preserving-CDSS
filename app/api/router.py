@@ -43,6 +43,7 @@ async def handle_detailed_query(request: QueryRequest):
 
     return InstrumentedResponse(
         answer=final_state.get("final_answer", SAFE_FAILURE_MESSAGE),
+        draft_answer=final_state.get("draft_answer", ""),   # raw pre-guardrail LLM output
         citations=final_state.get("citations", []),
         confidence=final_state.get("confidence", "low"),
         safe_failure=not bool(final_state.get("final_answer")),

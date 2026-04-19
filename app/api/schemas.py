@@ -29,6 +29,7 @@ class NodeTrace(BaseModel):
 
 class InstrumentedResponse(BaseModel):
     answer: str
+    draft_answer: str
     citations: List[Citation]
     confidence: str
     safe_failure: bool
