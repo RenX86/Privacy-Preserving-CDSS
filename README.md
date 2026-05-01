@@ -13,7 +13,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-8E44AD?style=flat)]()
 [![ClinGen](https://img.shields.io/badge/ClinGen-Live_API-6C3483?style=flat)]()
 [![gnomAD](https://img.shields.io/badge/gnomAD_v4-Live_API-E74C3C?style=flat)]()
-[![Status](https://img.shields.io/badge/Status-In_Development-F39C12?style=flat)]()
+[![Status](https://img.shields.io/badge/Status-Evaluation_Phase-2ECC71?style=flat)]()
 
 </div>
 
@@ -31,6 +31,10 @@
   - [Node 4 — Evaluator](#node-4--evaluator)
   - [Node 5 — Generator](#node-5--generator)
   - [Node 6 — Citation\_Enforcer](#node-6--citation_enforcer)
+- [Evaluation Framework](#-evaluation-framework)
+  - [Golden Test Set](#golden-test-set-28-cases)
+  - [Latest Results](#latest-results)
+  - [Running the Evaluation](#running-the-evaluation)
 - [Offline Ingestion Pipelines](#-offline-ingestion-pipelines)
 - [Database Schema](#-database-schema)
 - [Tech Stack](#-tech-stack)
@@ -500,39 +504,10 @@ Builds a structured clinical response using grammar-constrained JSON generation 
 
 ---
 
-### Node 6 — Critic
 
-A second LLM pass that audits the draft for clinical accuracy errors.
+### Node 6 — Citation\_Enforcer
 
-```
-  draft_answer + verified_chunks
-        │
-        ▼
-  ollama.chat() [free text — no JSON schema]
-  ┌────────────────────────────────────────────────────────────┐
-  │  AUDIT CHECKLIST:                                          │
-  │  1. Wrong gene data? (wrong age range / wrong surgery       │
-  │     assigned to gene — e.g. BRCA2 RRSO applied to BRCA1)  │
-  │  2. Hallucinations? (claims not in verified_chunks)        │
-  │  3. Missing citations? (every sentence needs [Source: X])  │
-  └────────────────────────────────────────────────────────────┘
-        │
-        ▼
-  Citation safety net:
-  ┌────────────────────────────────────────────────────────────┐
-  │  draft_cite_count = draft_answer.count("[Source:")         │
-  │  final_cite_count = final_answer.count("[Source:")         │
-  │                                                            │
-  │  if final_cite_count < draft_cite_count:                   │
-  │      WARNING: Critic dropped citations → REVERT TO DRAFT   │
-  └────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Node 7 — Citation\_Enforcer
-
-Post-processes the final answer and computes the confidence score.
+Post-processes the final answer, fixes hallucinated citations, and computes the confidence score.
 
 ```
   draft_answer + verified_chunks
@@ -627,6 +602,73 @@ docs/manifest.json
 
 ---
 
+## 🧪 Evaluation Framework
+
+Three-phase evaluation pipeline for dissertation-grade empirical evidence:
+
+```
+  Phase 1 (run_evaluation.py)       Phase 2 (run_ragas.py)         Phase 3 (run_ablation.py)
+  ──────────────────────────       ──────────────────────────       ──────────────────────────
+  API server (POST /query/detailed)  Reads raw_outputs_*.json       Runs pipeline with mock patches
+          │                                    │                              │
+          ▼                                    ▼                              ▼
+  28 golden test cases              Local LLM-as-judge             3 configs:
+  • Hallucination rate (draft)      (ministral-3:14b via Ollama)   • Full pipeline
+  • Guardrail effectiveness         │                              • No CRAG filter
+  • Citation accuracy               │                              • No guardrails
+  • Screening keyword accuracy      ▼
+          │                         3 Ragas metrics:
+          ▼                         • Faithfulness
+  raw_outputs_*.json                • Response Relevancy
+  run_*.md + charts/                • Context Precision
+```
+
+### Golden Test Set (28 cases)
+
+| Category | Example Cases | What’s Tested |
+|----------|--------------|---------------|
+| Multi-source | TC-001 (ClinVar + gnomAD + ClinGen + NCCN) | Full pipeline integration |
+| Cross-gene traps | TC-006, TC-013 (BRCA1 + colonoscopy) | Rule 6 table row isolation |
+| Safe failures | TC-004 (non-existent variant) | Refusal without hallucination |
+| gnomAD guardrails | TC-005, TC-010 (AF present / absent) | BA1/PM2 accuracy |
+| Moderate-penetrance | TC-026 (PALB2), TC-027 (CHEK2), TC-028 (ATM) | Gene-specific protocols |
+
+### Latest Results
+
+**Phase 1 — Hallucination & Citation (28 cases):**
+
+| Metric | Result |
+|--------|--------|
+| Pass rate | **27/28 (96.4%)** |
+| Avg hallucination (draft) | **1.2%** |
+| Citation accuracy | **100.0%** |
+| Keyword accuracy | **89.7%** |
+
+**Phase 2 — Ragas LLM-as-Judge (27 cases, baseline run):**
+
+| Metric | Score | Notes |
+|--------|-------|-------|
+| Faithfulness | 0.466 | Baseline — 6 N/A cases due to token limits; re-run after pipeline fixes for accurate score |
+| Response Relevancy | 0.775 | ✅ Answers on-topic |
+| Context Precision | 0.632 | Bibliography chunks inflated CRAG scores; fixed in reranker |
+
+> **Ragas judge:** `ministral-3:14b` via Ollama OpenAI-compatible endpoint (`/v1`). Embeddings: `BAAI/bge-base-en-v1.5` (local sentence-transformers). No external API calls during evaluation.
+
+### Running the Evaluation
+
+```bash
+# Phase 1 — API server must be running
+python evaluation/run_evaluation.py
+
+# Phase 2 — Ragas (reads most recent Phase 1 raw_outputs_*.json automatically)
+python -m evaluation.run_ragas
+
+# Phase 3 — Ablation study
+python evaluation/run_ablation.py
+```
+
+---
+
 ## 🗃️ Database Schema
 
 ```
@@ -673,19 +715,20 @@ docs/manifest.json
 | Layer | Technology | Version | Role |
 |---|---|---|---|
 | **API** | FastAPI + Uvicorn | 0.131 / 0.41 | HTTP interface, Pydantic I/O validation |
-| **Orchestration** | LangGraph (StateGraph) | via langchain | 6-node DAG, parallel Send-based fan-out |
+| **Orchestration** | LangGraph (StateGraph) | 1.0.10 | 6-node DAG, parallel Send-based fan-out |
 | **LLM** | Ollama | 0.6.1 | Local inference — query expansion, generation |
 | **Embeddings** | SentenceTransformer | 5.2.3 | BGE-base-en-v1.5 768-dim vectors |
 | **Reranking** | BAAI/bge-reranker-large | — | Cross-encoder relevance scoring |
 | **Database** | PostgreSQL 17 + pgvector | psycopg2 2.9.11 | Structured variants + vector similarity search |
 | **Connection pool** | psycopg2 ThreadedConnectionPool | — | min=2 / max=10 connections shared |
-| **PDF** | Docling | unpinned | Table-structure-aware PDF → Markdown |
-| **PDF** | Docling | — | Table-aware PDF → Markdown |
+| **PDF** | Docling | 2.77.0 | Table-structure-aware PDF → Markdown |
 | **Chunking** | LangChain text splitters | 1.2.10 | MarkdownHeader + Recursive (800 chars, 100 overlap) |
 | **External API 1** | gnomAD v4 GraphQL | httpx 0.28.1 | Allele frequency, BA1/PM2 annotations |
 | **External API 2** | ClinGen REST | httpx 0.28.1 | Gene validity, expert panel curation |
 | **Config** | pydantic-settings | 2.13.1 | `.env`-based configuration |
 | **Container** | Docker Compose | — | pgvector/pgAdmin |
+| **Evaluation** | Ragas + langchain-huggingface | — | LLM-as-judge: Faithfulness, Relevancy, Context Precision |
+
 
 ---
 
@@ -711,18 +754,17 @@ Privacy-Preserving-CDSS/
 │   │       └── indexing.py         PDF→chunk→embed→pgvector pipeline
 │   │
 │   ├── models/
-│   │   └── embeddings.py           SentenceTransformer wrapper (PubMedBERT)
+│   │   └── embeddings.py           SentenceTransformer wrapper (BGE-base-en-v1.5)
 │   │
 │   └── pipeline/
 │       ├── decomposition.py        Keyword routing → SubQuery list
 │       │
-│       ├── construction/           Stubs (planned features)
-│       │   ├── self_query.py       [STUB] LLM-powered metadata filter
-│       │   └── text_to_sql.py      [STUB] Natural language → SQL
+│       ├── construction/
+│       │   └── _deprecated/        Deprecated stubs (self_query, text_to_sql)
 │       │
 │       ├── graph/
 │       │   ├── state.py            CDSSGraphState TypedDict
-│       │   ├── nodes.py            7 node functions
+│       │   ├── nodes.py            6 node functions
 │       │   └── workflow.py         LangGraph DAG compilation
 │       │
 │       ├── retrieval/
@@ -746,15 +788,19 @@ Privacy-Preserving-CDSS/
 │   ├── protocols/                  NCCN Breast v2 2026
 │   └── screening/                  NCCN Genetic/Familial High-Risk Assessment
 │
+├── evaluation/
+│   ├── golden_set.json         28 clinical test cases
+│   ├── run_evaluation.py       Phase 1 — hallucination + citation scoring
+│   ├── run_ragas.py            Phase 2 — Ragas LLM-as-judge (Faithfulness, etc.)
+│   ├── run_ablation.py         Phase 3 — ablation study (Full vs No-CRAG vs No-Guardrails)
+│   └── results/                Timestamped .md reports, charts, raw JSON
+│
 ├── tests/
 │   ├── test_routing.py             decompose_query() unit tests
 │   ├── test_retrieval.py           reranker + CRAG unit tests
 │   ├── test_generation.py          citation enforcer unit tests
 │   └── test_clingen_client.py      gene extraction unit tests
 │
-├── RESULTS/                        Logged pipeline run outputs
-├── Problems.md                     Audit findings tracker
-├── Solutions.md                    Fix implementations
 ├── docker-compose.yml              pgvector (pg17) + pgAdmin
 ├── .env.example
 └── requirements.txt
@@ -831,12 +877,26 @@ python -m uvicorn app.main:app --port 5656 --reload
 
 **9. Run a query**
 ```bash
+# Simple response (answer + citations + confidence)
 curl -X POST http://localhost:5656/query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What is the clinical significance of rs879254116 in BRCA1 and what cancer screening protocol should the patient follow according to NCCN guidelines? Also confirm the ClinGen expert panel validity for BRCA1."
   }'
+
+# Detailed response (includes draft_answer, node trace, timing — used by evaluation)
+curl -X POST http://localhost:5656/query/detailed \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is rs879254116 in BRCA1?"}'
 ```
+
+**API endpoints:**
+
+| Endpoint | Response | Use case |
+|----------|----------|----------|
+| `POST /query` | `QueryResponse` — answer, citations, confidence | Production queries |
+| `POST /query/detailed` | `InstrumentedResponse` — adds draft_answer, gene, trace, timing | Evaluation, debugging |
+| `GET /health` | `{"status": "online"}` | Health checks |
 
 ---
 
@@ -944,10 +1004,19 @@ Draft JSON generated (3200 chars)
 - [x] **Screening/protocol mutual exclusion** — prevents cross-category retrieval noise
 - [x] **ACMG removal** — eliminated LLM-interpreted criteria to prevent clinical hallucinations; BA1/PM2 handled deterministically via gnomAD
 
-- [ ] Full unit test suite (test files stubbed)
-- [ ] Systematic evaluation framework (Ragas/custom faithfulness metrics)
+- [x] **Unit test suite** — 4 test files covering routing, retrieval, generation, ClinGen
+- [x] **3-phase evaluation framework** — Phase 1 (hallucination/citation), Phase 2 (Ragas faithfulness), Phase 3 (ablation)
+- [x] **28-case golden test set** — multi-source, cross-gene traps, safe-failure, moderate-penetrance genes
+- [x] **Per-subquery reranking** — chunks scored against focused topic text, not full mixed query
+- [x] **Reranker header stripping** — `_score_text()` strips `[Header_N:]` metadata prefix before BGE cross-encoder scoring, preventing bibliography chunks from scoring high due to keyword-rich NCCN section headers
+- [x] **Full-fidelity Ragas contexts** — `evaluate_node` now stores untruncated chunk texts in trace; `run_evaluation.py` writes them to `raw_outputs_*.json` so Ragas judges against the same evidence the LLM used
+- [x] **Ragas bibliography filter** — `_is_bibliography_chunk()` in `run_ragas.py` removes NCCN reference-section chunks (URL/numbered-citation heuristics) before building the Ragas Dataset
+- [x] **Ragas context budget tuned** — 600 chars/chunk × 4 chunks (was 350×5); covers full NCCN evidence chunks without hitting judge token limits
+
+**Remaining:**
 - [ ] gnomAD local cache (pre-fetch at index time, eliminate runtime external call)
 - [ ] Clinical validation with domain experts
+- [ ] Re-run Ragas after pipeline fixes for final dissertation-grade scores
 
 ---
 

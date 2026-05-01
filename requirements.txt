@@ -32,8 +32,8 @@ docling==2.77.0
 # ── Evaluation (Phase 1) ──────────────────────────────────────────
 matplotlib                  # charts — pip install matplotlib
 
-# ── Evaluation (Phase 2 — Ragas, optional, run on-demand) ─────────
-# pip install ragas langchain-ollama datasets
+# ── Evaluation (Phase 2 — Ragas, optional, run on-demand) —————————
+# pip install ragas langchain-huggingface datasets
 ragas
-langchain-ollama
+langchain-huggingface
 datasets

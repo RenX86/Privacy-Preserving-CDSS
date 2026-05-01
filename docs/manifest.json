@@ -10,5 +10,29 @@
     "category": "screening_protocol",
     "gene": null,
     "parser": "docling"
+  },
+  "Breast Cancer Risk Reduction.pdf": {
+    "source": "Breast Cancer Risk Reduction",
+    "category": "screening_protocol",
+    "gene": null,
+    "parser": "docling"
+  },
+  "Breast Cancer Screening and Diagnosis.pdf": {
+    "source": "Breast Cancer Screening and Diagnosis",
+    "category": "screening_protocol",
+    "gene": null,
+    "parser": "docling"
+  },
+  "Genetic Familial High-Risk Assessment Colorectal Endometrial and Gastric.pdf": {
+    "source": "Genetic-Familial High-Risk Assessment Colorectal Endometrial and Gastric",
+    "category": "screening_protocol",
+    "gene": null,
+    "parser": "docling"
+  },
+  "Prostate Cancer Early Detection.pdf": {
+    "source": "Prostate Cancer Early Detection",
+    "category": "screening_protocol",
+    "gene": null,
+    "parser": "docling"
   }
 }

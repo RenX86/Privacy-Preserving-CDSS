@@ -6,12 +6,16 @@ def get_variant_by_rsid(rsid: str) -> dict | None:
     SELECT
         rsid,
         gene_symbol,
+        variant_type,
+        hgvs_name,
         chromosome,
         position,
         ref_allele,
         alt_allele,
         clinical_significance,
         review_status,
+        origin,
+        num_submitters,
         condition,
         last_evaluated
     FROM variants
@@ -30,9 +34,13 @@ def get_variant_by_gene(gene_symbol: str) -> list[dict]:
     SELECT
         rsid,
         gene_symbol,
+        variant_type,
+        hgvs_name,
         clinical_significance,
-        condition,
-        review_status
+        review_status,
+        origin,
+        num_submitters,
+        condition
     FROM variants
     WHERE gene_symbol = %s
     ORDER BY clinical_significance;

@@ -84,13 +84,18 @@ def is_relevant(row: dict) -> bool:
 def insert_batch(conn, batch: list[tuple]):
     sql = """
         INSERT INTO variants
-            (rsid, gene_symbol, chromosome, position, ref_allele, alt_allele,
-            clinical_significance, review_status, condition, last_evaluated)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (rsid, gene_symbol, variant_type, hgvs_name, chromosome, position,
+            ref_allele, alt_allele, clinical_significance, review_status,
+            origin, num_submitters, condition, last_evaluated)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (rsid) DO UPDATE SET
             clinical_significance = EXCLUDED.clinical_significance,
             review_status         = EXCLUDED.review_status,
-            last_evaluated        = EXCLUDED.last_evaluated;
+            last_evaluated        = EXCLUDED.last_evaluated,
+            variant_type          = EXCLUDED.variant_type,
+            hgvs_name             = EXCLUDED.hgvs_name,
+            origin                = EXCLUDED.origin,
+            num_submitters        = EXCLUDED.num_submitters;
     """
     with conn.cursor() as cur:
         cur.executemany(sql, batch)
@@ -124,19 +129,28 @@ def ingest():
             last_eval = last_eval if last_eval not in ("", "-") else None
 
             try:
-                position = int(row.get("Start", 0))
+                position = int(row.get("PositionVCF") or row.get("Start", 0))
             except ValueError:
                 position = None
+
+            try:
+                num_sub = int(row.get("NumberSubmitters", 0) or 0)
+            except ValueError:
+                num_sub = 0
 
             batch.append((
                 rsid,
                 row.get("GeneSymbol", "").strip() or None,
+                row.get("Type", "").strip() or None,
+                row.get("Name", "").strip() or None,
                 row.get("Chromosome", "").strip() or None,
                 position,
                 row.get("ReferenceAlleleVCF", "").strip() or None,
                 row.get("AlternateAlleleVCF", "").strip() or None,
                 row.get("ClinicalSignificance", "").strip(),
                 row.get("ReviewStatus", "").strip(),
+                row.get("OriginSimple", "").strip() or None,
+                num_sub,
                 row.get("PhenotypeList", "").strip() or None,
                 last_eval
             ))

@@ -59,12 +59,26 @@ def _clean_conditions(raw: str) -> str:
 def from_postgres_result(result: dict) -> RetrievedChunk:
 
     conditions = _clean_conditions(result.get('condition', ''))
+
+    # Build optional fields only if data exists
+    extra_lines = []
+    if result.get('variant_type'):
+        extra_lines.append(f"Variant type: {result['variant_type']}.")
+    if result.get('hgvs_name'):
+        extra_lines.append(f"HGVS: {result['hgvs_name']}.")
+    if result.get('origin'):
+        extra_lines.append(f"Origin: {result['origin']}.")
+    if result.get('num_submitters'):
+        extra_lines.append(f"Number of submitters: {result['num_submitters']}.")
+    extra_block = "\n".join(extra_lines)
+
     text = (
         f"Variant {result.get('rsid')} in gene {result.get('gene_symbol')} "
         f"is classified as {result.get('clinical_significance')}.\n"
         f"Condition: {conditions}.\n"
-        f"Review Status: {result.get('review_status')}."
-    )
+        f"Review Status: {result.get('review_status')}.\n"
+        f"{extra_block}"
+    ).strip()
     return RetrievedChunk(
         text=text,
         source="Clinvar",
