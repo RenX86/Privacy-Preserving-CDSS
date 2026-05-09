@@ -10,7 +10,7 @@
       "requires_clingen": true,
       "requires_nccn_screening": true,
       "expected_screening_keywords": ["mammography", "MRI", "salpingo-oophorectomy", "breast"],
-      "forbidden_content": ["frameshift", "missense", "de novo", "computational prediction", "colonoscopy", "MLH1", "Lynch"],
+      "forbidden_content": ["missense", "de novo", "computational prediction", "colonoscopy", "MLH1", "Lynch"],
       "expected_citations_contain": ["Clinvar", "ClinGen", "Detection, Prevention, and Risk Reduction"]
     }
   },

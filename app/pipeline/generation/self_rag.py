@@ -260,12 +260,19 @@ def _enforce_clinvar_classification(answer: str, verified_chunks: list[Retrieved
         return answer
 
     # Extract the actual classification from the ClinVar chunk text
-    # ClinVar chunks contain "clinical_significance: Pathogenic" or similar
+    # ClinVar chunks say "is classified as Pathogenic" (enriched format)
+    # or "clinical_significance: Pathogenic" (legacy format)
     clinvar_text = clinvar_chunks[0].text
     sig_match = re.search(
-        r'clinical_significance:\s*([^|\n,]+)',
+        r'is classified as\s+([^.\n]+)',
         clinvar_text, re.IGNORECASE
     )
+    if not sig_match:
+        # Fallback: legacy format
+        sig_match = re.search(
+            r'clinical_significance:\s*([^|\n,]+)',
+            clinvar_text, re.IGNORECASE
+        )
     if not sig_match:
         return answer
 
@@ -329,6 +336,52 @@ def _enforce_no_fabricated_predictions(answer: str, verified_chunks: list[Retrie
                     '', answer, flags=re.IGNORECASE
                 )
                 log.info(f"[Guardrail] Stripped fabricated prediction matching: {pattern}")
+
+    return answer
+
+
+# ── Cross-gene screening contamination guard ──────────────────────────────────
+
+_BRCA_FAMILY_GENES = {
+    "BRCA1", "BRCA2", "PALB2", "ATM", "CHEK2", "RAD51C", "RAD51D", "BARD1",
+}
+
+_LYNCH_SCREENING_PATTERN = re.compile(
+    r'\n?\*\s*[^\n]*\b(?:colonoscop(?:y|ies)|colectomy|gastrectomy|'
+    r'endometrial\s+biops(?:y|ies))\b[^\n]*',
+    re.IGNORECASE
+)
+
+_GENE_RE = re.compile(r'\b([A-Z][A-Z0-9]{1,9})\b')
+_NON_GENE = {
+    "ACMG", "NCCN", "VUS", "HGVS", "DNA", "RNA", "MRI", "RRSO", "PSA",
+    "EUS", "MRCP", "AFAB", "AMAB", "TIC", "SIFT", "REVEL", "CADD",
+}
+
+
+def _extract_query_gene(query: str) -> str | None:
+    """Extract the most likely gene symbol from the user query."""
+    for m in _GENE_RE.finditer(query):
+        candidate = m.group(1)
+        if candidate not in _NON_GENE:
+            return candidate
+    return None
+
+
+def _enforce_gene_screening_boundaries(answer: str, query: str) -> str:
+    """
+    Programmatic guard: Strip Lynch-syndrome-specific screening recommendations
+    (colonoscopy, colectomy, gastrectomy) from queries about BRCA-family genes.
+    NCCN does NOT recommend colonoscopy for BRCA/PALB2/ATM/CHEK2 carriers.
+    """
+    gene = _extract_query_gene(query)
+    if not gene or gene.upper() not in _BRCA_FAMILY_GENES:
+        return answer
+
+    cleaned = _LYNCH_SCREENING_PATTERN.sub('', answer)
+    if cleaned != answer:
+        log.info("[Guardrail] Stripped Lynch-specific screening from %s query", gene)
+        return _cleanup_orphaned_text(cleaned)
 
     return answer
 
@@ -431,6 +484,7 @@ def generate_answer(query: str, verified_chunks: list[RetrievedChunk]) -> str:
             answer = _enforce_clinvar_classification(answer, verified_chunks)
             answer = _enforce_no_fabricated_predictions(answer, verified_chunks)
             answer = _enforce_no_fabricated_acmg(answer, verified_chunks)
+            answer = _enforce_gene_screening_boundaries(answer, query)
             answer = _cleanup_orphaned_text(answer)
 
         except json.JSONDecodeError:

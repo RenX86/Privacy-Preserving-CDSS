@@ -2,6 +2,7 @@ import json
 import time
 import asyncio
 import copy
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -32,6 +33,32 @@ def score_case(case, final_state):
 
     return hallu_score, cite_score
 
+
+# ── Guardrail targets for ablation ────────────────────────────────────────────
+# Each tuple: (mock target path, pass-through side_effect)
+# Different guardrails have different signatures, so side_effects are tailored.
+
+GUARDRAIL_MOCKS = [
+    # (answer, chunks) -> answer
+    ("app.pipeline.generation.self_rag._enforce_gnomad_accuracy",
+     lambda ans, chunks: ans),
+    ("app.pipeline.generation.self_rag._enforce_no_fabricated_biology",
+     lambda ans, chunks: ans),
+    ("app.pipeline.generation.self_rag._enforce_clinvar_classification",
+     lambda ans, chunks: ans),
+    ("app.pipeline.generation.self_rag._enforce_no_fabricated_predictions",
+     lambda ans, chunks: ans),
+    ("app.pipeline.generation.self_rag._enforce_no_fabricated_acmg",
+     lambda ans, chunks: ans),
+    # (answer, query) -> answer
+    ("app.pipeline.generation.self_rag._enforce_gene_screening_boundaries",
+     lambda ans, query: ans),
+    # (answer) -> answer
+    ("app.pipeline.generation.self_rag._cleanup_orphaned_text",
+     lambda ans: ans),
+]
+
+
 def run_ablation():
     path = BASE_DIR / "golden_set.json"
     with open(path, "r", encoding="utf-8") as f:
@@ -40,17 +67,19 @@ def run_ablation():
     results_dir = BASE_DIR / "results"
     results_dir.mkdir(exist_ok=True)
     
-    # We will test 3 configs: Full Pipeline, No CRAG, No Guardrails
+    # 3 configs: Full Pipeline, No CRAG, No Guardrails (all 7 mocked)
     configs = [
         {"name": "Full pipeline"},
         {"name": "No CRAG filter", "mock_target": "app.pipeline.graph.nodes.evaluate_chunks"},
-        {"name": "No guardrails", "mock_target": "app.pipeline.generation.self_rag._enforce_gnomad_accuracy"}
+        {"name": "No guardrails", "mock_all_guardrails": True},
     ]
 
     print("Starting Ablation Study...")
     
     summary = []
     summary.append("# Ablation Study Results")
+    summary.append(f"\n**Date:** {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    summary.append(f"**Cases:** {min(5, len(cases))} (subset for speed)\n")
     summary.append("| Configuration | Hallucination Rate (Avg) | Citation Accuracy (Avg) |")
     summary.append("|---------------|--------------------------|-------------------------|")
 
@@ -63,17 +92,18 @@ def run_ablation():
         for case in cases[:5]: # Run a subset for speed during ablation
             print(f"  Testing {case['id']}...")
             try:
-                if "mock_target" in config:
-                    # Mocking different components to simulate ablation
+                if config.get("mock_all_guardrails"):
+                    # Mock ALL guardrails using ExitStack
+                    with ExitStack() as stack:
+                        for target, side_effect in GUARDRAIL_MOCKS:
+                            mock_obj = stack.enter_context(patch(target))
+                            mock_obj.side_effect = side_effect
+                        state = run_pipeline_with_mock(case["query"])
+
+                elif "mock_target" in config:
                     if "evaluate_chunks" in config["mock_target"]:
-                        # Mock CRAG to just pass all chunks
                         with patch(config["mock_target"]) as mock_eval:
                             mock_eval.side_effect = lambda q, chunks: {"correct": chunks, "ambiguous": [], "incorrect": []}
-                            state = run_pipeline_with_mock(case["query"])
-                    elif "enforce_" in config["mock_target"]:
-                        # Mock the hallucination guardrails to do nothing (return original text)
-                        with patch(config["mock_target"]) as mock_guard:
-                            mock_guard.side_effect = lambda ans, chunks: ans
                             state = run_pipeline_with_mock(case["query"])
                 else:
                     state = run_pipeline_with_mock(case["query"])
@@ -82,13 +112,29 @@ def run_ablation():
                 total_hallu += h_score
                 total_cite += c_score
                 valid_cases += 1
+                icon = "✅" if h_score == 0 else "❌"
+                print(f"    {icon} Hallu={h_score:.0f}% Cite={c_score:.0f}%")
             except Exception as e:
-                print(f"  Failed: {e}")
+                print(f"    Failed: {e}")
         
         avg_h = total_hallu / max(1, valid_cases)
         avg_c = total_cite / max(1, valid_cases)
         
         summary.append(f"| {config['name']} | {avg_h:.1f}% | {avg_c:.1f}% |")
+
+    summary.append("")
+    summary.append("## Methodology")
+    summary.append("")
+    summary.append("- **Full pipeline**: All components active (CRAG + 7 guardrails)")
+    summary.append("- **No CRAG filter**: CRAG evaluator bypassed — all retrieved chunks pass through")
+    summary.append("- **No guardrails**: All 7 post-generation guardrails disabled:")
+    summary.append("  - `_enforce_gnomad_accuracy`")
+    summary.append("  - `_enforce_no_fabricated_biology`")
+    summary.append("  - `_enforce_clinvar_classification`")
+    summary.append("  - `_enforce_no_fabricated_predictions`")
+    summary.append("  - `_enforce_no_fabricated_acmg`")
+    summary.append("  - `_enforce_gene_screening_boundaries`")
+    summary.append("  - `_cleanup_orphaned_text`")
 
     out_path = results_dir / f"ablation_{int(time.time())}.md"
     with open(out_path, "w", encoding="utf-8") as f:
@@ -98,3 +144,4 @@ def run_ablation():
 
 if __name__ == "__main__":
     run_ablation()
+
