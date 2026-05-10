@@ -26,10 +26,12 @@ try:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    import numpy as np
     CHARTS_AVAILABLE = True
 except ImportError:
     CHARTS_AVAILABLE = False
     print("[Warning] matplotlib not installed — charts will be skipped.")
+
 
 BASE_DIR  = Path(__file__).resolve().parent
 API_URL   = "http://127.0.0.1:5656/query/detailed"
@@ -150,47 +152,75 @@ def generate_charts(scores: list[dict], charts_dir: Path) -> None:
 
     # — 1. Hallucination Rate (DRAFT, before guardrails) ——————————————————————
     fig, ax = plt.subplots(figsize=(14, 5))
-    colors = ["#e74c3c" if s["hallu_rate"] > 0 else "#2ecc71" for s in scores]
-    ax.bar(ids, [s["hallu_rate"] for s in scores], color=colors)
-    ax.set_title("LLM Hallucination Rate in Draft (before guardrails) (%)", fontsize=13, fontweight="bold")
+    hallu_vals = [s["hallu_rate"] for s in scores]
+    colors = ["#e74c3c" if v > 0 else "#2ecc71" for v in hallu_vals]
+    bars = ax.bar(ids, hallu_vals, color=colors, edgecolor="white", linewidth=0.5)
+    # Add value labels on non-zero bars
+    for bar, val in zip(bars, hallu_vals):
+        if val > 0:
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
+                    f"{val:.0f}%", ha="center", va="bottom", fontsize=9, fontweight="bold")
+    ax.set_title("LLM Hallucination Rate in Draft (before guardrails)", fontsize=13, fontweight="bold")
     ax.set_xlabel("Test Case ID")
     ax.set_ylabel("Hallucination Rate (%)")
     ax.set_ylim(0, 110)
-    green_p = mpatches.Patch(color="#2ecc71", label="Pass (0%)")
-    red_p   = mpatches.Patch(color="#e74c3c", label="Fail (>0%)")
-    ax.legend(handles=[green_p, red_p])
+    ax.axhline(y=0, color="gray", linestyle="-", linewidth=0.5)
+    green_p = mpatches.Patch(color="#2ecc71", label="Clean (0%)")
+    red_p   = mpatches.Patch(color="#e74c3c", label="Hallucinated (>0%)")
+    ax.legend(handles=[green_p, red_p], loc="upper right")
+    ax.yaxis.grid(True, alpha=0.3)
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     fig.savefig(charts_dir / "hallucination_rate.png", dpi=150)
     plt.close(fig)
 
-    # — 2. Guardrail Effectiveness (% of draft hallucinations caught) —————————
-    guard_scores = [s for s in scores if s["guardrail_eff"] is not None]
-    if guard_scores:
-        fig, ax = plt.subplots(figsize=(14, 5))
-        g_ids  = [s["id"] for s in guard_scores]
-        g_vals = [s["guardrail_eff"] for s in guard_scores]
-        ax.bar(g_ids, g_vals, color="#8e44ad")
-        ax.set_title("Guardrail Effectiveness (% of LLM hallucinations caught & stripped) (%)", fontsize=13, fontweight="bold")
-        ax.set_xlabel("Test Case ID")
-        ax.set_ylabel("Guardrail Effectiveness (%)")
-        ax.set_ylim(0, 110)
-        plt.xticks(rotation=45, ha="right")
-        plt.tight_layout()
-        fig.savefig(charts_dir / "guardrail_effectiveness.png", dpi=150)
-        plt.close(fig)
+    # — 2. Guardrail Impact: Draft vs Final hallucination (all cases) ——————————
+    fig, ax = plt.subplots(figsize=(14, 5))
+    x = range(len(ids))
+    bar_width = 0.35
+    draft_vals = [s["hallu_rate"] for s in scores]
+    # Final = 0% for passed cases, same as draft for failed (guardrail didn't catch)
+    final_vals = [0 if s["passed"] else s["hallu_rate"] for s in scores]
+
+    bars_draft = ax.bar([i - bar_width/2 for i in x], draft_vals, bar_width,
+                         label="Draft (before guardrails)", color="#e74c3c", alpha=0.8)
+    bars_final = ax.bar([i + bar_width/2 for i in x], final_vals, bar_width,
+                         label="Final (after guardrails)", color="#2ecc71", alpha=0.8)
+    ax.set_title("Guardrail Impact: Draft vs Final Hallucination Rate (%)", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Test Case ID")
+    ax.set_ylabel("Hallucination Rate (%)")
+    ax.set_ylim(0, 110)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(ids, rotation=45, ha="right")
+    ax.legend(loc="upper right")
+    ax.yaxis.grid(True, alpha=0.3)
+    # Annotate cases where guardrails caught hallucinations
+    for i, (d, f) in enumerate(zip(draft_vals, final_vals)):
+        if d > 0 and f == 0:
+            ax.annotate("✓ caught", (i, d + 2), ha="center", fontsize=8,
+                        color="#27ae60", fontweight="bold")
+    plt.tight_layout()
+    fig.savefig(charts_dir / "guardrail_effectiveness.png", dpi=150)
+    plt.close(fig)
 
     # — 3. Citation Accuracy ——————————————————————————————————————————————————
     cite_scores = [s for s in scores if s["cite_acc"] is not None]
     if cite_scores:
         fig, ax = plt.subplots(figsize=(14, 5))
         c_ids  = [s["id"] for s in cite_scores]
-        colors = ["#2ecc71" if s["cite_acc"] == 100 else "#e67e22" for s in cite_scores]
-        ax.bar(c_ids, [s["cite_acc"] for s in cite_scores], color=colors)
+        c_vals = [s["cite_acc"] for s in cite_scores]
+        colors = ["#2ecc71" if v == 100 else "#e67e22" for v in c_vals]
+        bars = ax.bar(c_ids, c_vals, color=colors, edgecolor="white", linewidth=0.5)
+        # Label non-100% bars
+        for bar, val in zip(bars, c_vals):
+            if val < 100:
+                ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
+                        f"{val:.0f}%", ha="center", va="bottom", fontsize=9, fontweight="bold")
         ax.set_title("Citation Accuracy per Test Case (% required sources present)", fontsize=13, fontweight="bold")
         ax.set_xlabel("Test Case ID")
         ax.set_ylabel("Citation Accuracy (%)")
         ax.set_ylim(0, 110)
+        ax.yaxis.grid(True, alpha=0.3)
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
         fig.savefig(charts_dir / "citation_accuracy.png", dpi=150)
@@ -198,10 +228,15 @@ def generate_charts(scores: list[dict], charts_dir: Path) -> None:
 
     # — 4. Retrieval Recall ——————————————————————————————————————————————————
     fig, ax = plt.subplots(figsize=(14, 5))
-    ax.bar(ids, [s["verified"] for s in scores], color="#3498db")
+    chunk_vals = [s["verified"] for s in scores]
+    bars = ax.bar(ids, chunk_vals, color="#3498db", edgecolor="white", linewidth=0.5)
+    for bar, val in zip(bars, chunk_vals):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+                str(val), ha="center", va="bottom", fontsize=8)
     ax.set_title("Verified Chunks Retrieved per Test Case (post-CRAG)", fontsize=13, fontweight="bold")
     ax.set_xlabel("Test Case ID")
     ax.set_ylabel("Chunk Count")
+    ax.yaxis.grid(True, alpha=0.3)
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     fig.savefig(charts_dir / "retrieval_recall.png", dpi=150)
@@ -220,6 +255,7 @@ def generate_charts(scores: list[dict], charts_dir: Path) -> None:
     ax.set_xlabel("Test Case ID")
     ax.set_ylabel("Duration (s)")
     ax.legend(loc="upper right")
+    ax.yaxis.grid(True, alpha=0.3)
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     fig.savefig(charts_dir / "node_timing.png", dpi=150)
@@ -233,14 +269,123 @@ def generate_charts(scores: list[dict], charts_dir: Path) -> None:
         [passed, failed],
         labels=[f"Pass ({passed})", f"Fail ({failed})"],
         colors=["#2ecc71", "#e74c3c"],
-        autopct="%1.0f%%", startangle=90
+        autopct="%1.0f%%", startangle=90,
+        textprops={"fontsize": 12}
     )
     ax.set_title("Overall Pass / Fail", fontsize=13, fontweight="bold")
     plt.tight_layout()
     fig.savefig(charts_dir / "pass_fail_summary.png", dpi=150)
     plt.close(fig)
 
-    print(f"  [Charts] Saved 6 charts to {charts_dir}/")
+    # — 7. Keyword Accuracy ————————————————————————————————————————————————————
+    kw_scores = [s for s in scores if s.get("kw_acc") is not None]
+    if kw_scores:
+        fig, ax = plt.subplots(figsize=(14, 5))
+        k_ids  = [s["id"] for s in kw_scores]
+        k_vals = [s["kw_acc"] for s in kw_scores]
+        colors = ["#2ecc71" if v == 100 else ("#e67e22" if v >= 50 else "#e74c3c") for v in k_vals]
+        bars = ax.bar(k_ids, k_vals, color=colors, edgecolor="white", linewidth=0.5)
+        for bar, val in zip(bars, k_vals):
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
+                    f"{val:.0f}%", ha="center", va="bottom", fontsize=9, fontweight="bold")
+        ax.set_title("Screening Keyword Accuracy per Test Case (%)", fontsize=13, fontweight="bold")
+        ax.set_xlabel("Test Case ID")
+        ax.set_ylabel("Keyword Accuracy (%)")
+        ax.set_ylim(0, 110)
+        ax.yaxis.grid(True, alpha=0.3)
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        fig.savefig(charts_dir / "keyword_accuracy.png", dpi=150)
+        plt.close(fig)
+
+    print(f"  [Charts] Saved charts to {charts_dir}/")
+
+    # — 8. Multi-Metric Heatmap ————————————————————————————————————————————————
+    # All test cases × all metrics in one overview figure
+    metric_names = ["Hallu-Free\n(draft)", "Guardrail\nEff.", "Citation\nAcc.", "Keyword\nAcc."]
+    data_matrix = []
+    row_labels = []
+    for s in scores:
+        hallu_free = 100.0 - s["hallu_rate"]     # invert: higher = better
+        ge = s["guardrail_eff"] if s["guardrail_eff"] is not None else 100.0  # no hallucination = 100%
+        ca = s["cite_acc"] if s["cite_acc"] is not None else 100.0
+        kw = s["kw_acc"] if s["kw_acc"] is not None else 100.0
+        data_matrix.append([hallu_free, ge, ca, kw])
+        row_labels.append(s["id"])
+
+    data_arr = np.array(data_matrix)
+    fig, ax = plt.subplots(figsize=(8, max(8, len(scores) * 0.35)))
+    im = ax.imshow(data_arr, cmap="RdYlGn", aspect="auto", vmin=0, vmax=100)
+
+    ax.set_xticks(range(len(metric_names)))
+    ax.set_xticklabels(metric_names, fontsize=9)
+    ax.set_yticks(range(len(row_labels)))
+    ax.set_yticklabels(row_labels, fontsize=9)
+
+    # Annotate cells with values
+    for i in range(len(row_labels)):
+        for j in range(len(metric_names)):
+            val = data_arr[i, j]
+            color = "white" if val < 50 else "black"
+            ax.text(j, i, f"{val:.0f}", ha="center", va="center", fontsize=8, color=color)
+
+    ax.set_title("Multi-Metric Performance Heatmap (% — higher = better)", fontsize=13, fontweight="bold", pad=12)
+    fig.colorbar(im, ax=ax, shrink=0.6, label="Score (%)")
+    plt.tight_layout()
+    fig.savefig(charts_dir / "multi_metric_heatmap.png", dpi=150)
+    plt.close(fig)
+
+    # — 9. Retrieval vs Quality Scatter ————————————————————————————————————————
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for s in scores:
+        ca = s["cite_acc"] if s["cite_acc"] is not None else 100.0
+        color = "#2ecc71" if s["passed"] else "#e74c3c"
+        ax.scatter(s["verified"], ca, color=color, s=80, edgecolors="white", linewidth=0.5, zorder=3)
+        ax.annotate(s["id"], (s["verified"], ca), fontsize=6, ha="center", va="bottom",
+                    xytext=(0, 5), textcoords="offset points")
+
+    ax.set_xlabel("Verified Chunks Retrieved (post-CRAG)", fontsize=11)
+    ax.set_ylabel("Citation Accuracy (%)", fontsize=11)
+    ax.set_title("Retrieval Volume vs Citation Quality", fontsize=13, fontweight="bold")
+    ax.set_ylim(-5, 110)
+    ax.axhline(y=100, color="gray", linestyle="--", alpha=0.5)
+    ax.yaxis.grid(True, alpha=0.3)
+    ax.xaxis.grid(True, alpha=0.3)
+    green_p = mpatches.Patch(color="#2ecc71", label="Pass")
+    red_p   = mpatches.Patch(color="#e74c3c", label="Fail")
+    ax.legend(handles=[green_p, red_p], loc="lower right")
+    plt.tight_layout()
+    fig.savefig(charts_dir / "retrieval_vs_quality.png", dpi=150)
+    plt.close(fig)
+
+    # — 10. Latency Distribution Box Plot ——————————————————————————————————————
+    node_order = ["Decomposer", "DB_Retriever", "PDF_Retriever", "Evaluator", "Generator", "Enforcer"]
+    node_colors = ["#9b59b6", "#3498db", "#1abc9c", "#f39c12", "#e74c3c", "#95a5a6"]
+    box_data = []
+    box_labels = []
+    for node in node_order:
+        vals = [s["timings"].get(node, 0) / 1000 for s in scores if s["timings"].get(node, 0) > 0]
+        if vals:
+            box_data.append(vals)
+            box_labels.append(node)
+
+    if box_data:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        bp = ax.boxplot(box_data, patch_artist=True, labels=box_labels, widths=0.6)
+        for patch, color in zip(bp["boxes"], node_colors[:len(box_data)]):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.7)
+        for median in bp["medians"]:
+            median.set_color("black")
+            median.set_linewidth(2)
+        ax.set_title("Pipeline Node Latency Distribution (seconds)", fontsize=13, fontweight="bold")
+        ax.set_ylabel("Duration (s)")
+        ax.yaxis.grid(True, alpha=0.3)
+        plt.tight_layout()
+        fig.savefig(charts_dir / "latency_distribution.png", dpi=150)
+        plt.close(fig)
+
+
 
 
 # ── main ──────────────────────────────────────────────────────────────────────

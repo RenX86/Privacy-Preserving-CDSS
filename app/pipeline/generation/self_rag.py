@@ -346,9 +346,21 @@ _BRCA_FAMILY_GENES = {
     "BRCA1", "BRCA2", "PALB2", "ATM", "CHEK2", "RAD51C", "RAD51D", "BARD1",
 }
 
+_LYNCH_FAMILY_GENES = {
+    "MLH1", "MSH2", "MSH6", "PMS2", "EPCAM",
+}
+
+# Lynch-specific terms to strip from BRCA queries
 _LYNCH_SCREENING_PATTERN = re.compile(
     r'\n?\*\s*[^\n]*\b(?:colonoscop(?:y|ies)|colectomy|gastrectomy|'
     r'endometrial\s+biops(?:y|ies))\b[^\n]*',
+    re.IGNORECASE
+)
+
+# BRCA-specific terms to strip from Lynch queries
+_BRCA_SCREENING_PATTERN = re.compile(
+    r'\n?\*\s*[^\n]*\b(?:salpingo[- ]?oophorectomy|RRSO|mastectomy|'
+    r'breast\s+MRI|mammograph(?:y|ies)|oophorectomy)\b[^\n]*',
     re.IGNORECASE
 )
 
@@ -370,17 +382,30 @@ def _extract_query_gene(query: str) -> str | None:
 
 def _enforce_gene_screening_boundaries(answer: str, query: str) -> str:
     """
-    Programmatic guard: Strip Lynch-syndrome-specific screening recommendations
-    (colonoscopy, colectomy, gastrectomy) from queries about BRCA-family genes.
-    NCCN does NOT recommend colonoscopy for BRCA/PALB2/ATM/CHEK2 carriers.
+    Bidirectional cross-gene screening guard:
+    1. Strip Lynch-specific screening (colonoscopy, colectomy, gastrectomy)
+       from BRCA-family gene queries.
+    2. Strip BRCA-specific screening (RRSO, mastectomy, oophorectomy, breast MRI)
+       from Lynch/MMR gene queries (MLH1, MSH2, MSH6, PMS2, EPCAM).
     """
     gene = _extract_query_gene(query)
-    if not gene or gene.upper() not in _BRCA_FAMILY_GENES:
+    if not gene:
         return answer
 
-    cleaned = _LYNCH_SCREENING_PATTERN.sub('', answer)
+    gene_upper = gene.upper()
+    cleaned = answer
+
+    if gene_upper in _BRCA_FAMILY_GENES:
+        cleaned = _LYNCH_SCREENING_PATTERN.sub('', cleaned)
+        if cleaned != answer:
+            log.info("[Guardrail] Stripped Lynch-specific screening from %s query", gene)
+
+    elif gene_upper in _LYNCH_FAMILY_GENES:
+        cleaned = _BRCA_SCREENING_PATTERN.sub('', cleaned)
+        if cleaned != answer:
+            log.info("[Guardrail] Stripped BRCA-specific screening from %s query", gene)
+
     if cleaned != answer:
-        log.info("[Guardrail] Stripped Lynch-specific screening from %s query", gene)
         return _cleanup_orphaned_text(cleaned)
 
     return answer

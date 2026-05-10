@@ -306,6 +306,107 @@ def run_ragas(records: list[dict], output_path: Path) -> None:
         f.write("\n".join(lines))
     print(f"\n  [Report] → {output_path}")
 
+    # ── Charts ────────────────────────────────────────────────────────────────
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        charts_dir = output_path.parent / f"{output_path.stem}_charts"
+        charts_dir.mkdir(parents=True, exist_ok=True)
+
+        # Helper: safe column to list
+        def _col_vals(col):
+            if col is None:
+                return [0.0] * len(records)
+            vals = []
+            for i in range(len(records)):
+                v = df[col].iloc[i]
+                vals.append(float(v) if str(v) != "nan" else 0.0)
+            return vals
+
+        faith_vals = _col_vals(faith_col)
+        ar_vals    = _col_vals(ar_col)
+        cp_vals    = _col_vals(cp_col)
+        case_ids   = [r["id"] for r in records]
+
+        # — Radar Chart (Average Ragas Metrics) ———————————————————————————————
+        labels = ["Faithfulness", "Response\nRelevancy", "Context\nPrecision"]
+        avgs = [
+            avg_f if not np.isnan(avg_f) else 0.0,
+            avg_ar if not np.isnan(avg_ar) else 0.0,
+            avg_cp if not np.isnan(avg_cp) else 0.0,
+        ]
+
+        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+        avgs_plot = avgs + [avgs[0]]     # close the polygon
+        angles += [angles[0]]
+
+        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+        ax.fill(angles, avgs_plot, color="#3498db", alpha=0.25)
+        ax.plot(angles, avgs_plot, color="#3498db", linewidth=2, marker="o", markersize=8)
+
+        # Add value labels
+        for angle, val, label in zip(angles[:-1], avgs, labels):
+            ax.text(angle, val + 0.08, f"{val:.3f}", ha="center", va="bottom",
+                    fontsize=11, fontweight="bold", color="#2c3e50")
+
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(labels, fontsize=11)
+        ax.set_ylim(0, 1.0)
+        ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+        ax.set_yticklabels(["0.2", "0.4", "0.6", "0.8", "1.0"], fontsize=8, color="gray")
+        ax.set_title("Ragas Average Metrics", fontsize=14, fontweight="bold", pad=20)
+        plt.tight_layout()
+        fig.savefig(charts_dir / "ragas_radar.png", dpi=150)
+        plt.close(fig)
+
+        # — Per-Case Grouped Bar Chart ————————————————————————————————————————
+        x = np.arange(len(case_ids))
+        bar_width = 0.25
+
+        fig, ax = plt.subplots(figsize=(max(12, len(case_ids) * 0.6), 6))
+        ax.bar(x - bar_width, faith_vals, bar_width, label="Faithfulness", color="#e74c3c", alpha=0.85)
+        ax.bar(x, ar_vals, bar_width, label="Response Relevancy", color="#3498db", alpha=0.85)
+        ax.bar(x + bar_width, cp_vals, bar_width, label="Context Precision", color="#2ecc71", alpha=0.85)
+
+        ax.set_xlabel("Test Case ID", fontsize=11)
+        ax.set_ylabel("Score (0–1)", fontsize=11)
+        ax.set_title("Ragas Metrics per Test Case", fontsize=13, fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels(case_ids, rotation=45, ha="right", fontsize=9)
+        ax.set_ylim(0, 1.15)
+        ax.axhline(y=0.8, color="gray", linestyle="--", alpha=0.4, label="0.8 threshold")
+        ax.legend(loc="upper right", fontsize=9)
+        ax.yaxis.grid(True, alpha=0.3)
+        plt.tight_layout()
+        fig.savefig(charts_dir / "ragas_per_case.png", dpi=150)
+        plt.close(fig)
+
+        # — Faithfulness Distribution Histogram ———————————————————————————————
+        fig, ax = plt.subplots(figsize=(8, 5))
+        valid_faith = [v for v in faith_vals if v > 0]
+        if valid_faith:
+            ax.hist(valid_faith, bins=10, range=(0, 1), color="#e74c3c", alpha=0.7,
+                    edgecolor="white", linewidth=0.8)
+            ax.axvline(x=avg_f, color="#2c3e50", linestyle="--", linewidth=2,
+                       label=f"Mean = {avg_f:.3f}")
+            ax.set_xlabel("Faithfulness Score", fontsize=11)
+            ax.set_ylabel("Number of Test Cases", fontsize=11)
+            ax.set_title("Faithfulness Score Distribution", fontsize=13, fontweight="bold")
+            ax.legend(fontsize=10)
+            ax.yaxis.grid(True, alpha=0.3)
+            plt.tight_layout()
+            fig.savefig(charts_dir / "faithfulness_distribution.png", dpi=150)
+        plt.close(fig)
+
+        print(f"  [Charts] Saved Ragas charts to {charts_dir}/")
+
+    except ImportError:
+        print("  [Info] Install matplotlib for Ragas charts: pip install matplotlib")
+
+
 
 # ── Entry ────────────────────────────────────────────────────────────────────
 
